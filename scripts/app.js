@@ -34,6 +34,8 @@ const F1App = {
     if (target) {
       target.classList.add('active');
       window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
     }
   },
 
@@ -174,10 +176,10 @@ const F1App = {
       this.validateAndStartAuction();
     });
 
-    // Restart App Button
+    // Restart App Button - Takes user back to Landing Page (Screen 0)
     document.getElementById('btn-restart-app').addEventListener('click', () => {
       document.getElementById('results-modal').classList.add('hidden');
-      this.navigateTo('screen-setup');
+      this.navigateTo('screen-landing');
     });
 
     // Initialize Setup Controls

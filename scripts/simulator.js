@@ -276,6 +276,24 @@ const F1Simulator = {
       const waypoint = this.getSegmentWaypoint(car.progress, track);
       let speedMult = waypoint.speedFactor || 1.0;
 
+      // Track-Specific Physics Modifiers
+      if (this.trackKey === 'monaco') {
+        speedMult *= 0.80; // Monaco: -20% speed
+      } else if (this.trackKey === 'monza') {
+        if (waypoint.type === 'straight') {
+          speedMult *= 1.25; // Monza: +25% top speed on straights
+        }
+      } else if (this.trackKey === 'silverstone') {
+        // Silverstone: High tire wear modifier (progressively slows speed over race duration)
+        const tireWearFactor = Math.max(0.85, 1.0 - (car.lap / this.totalLaps) * 0.15);
+        speedMult *= tireWearFactor;
+      } else if (this.trackKey === 'suzuka') {
+        // Suzuka: +15% performance boost in Sector 1 (S-Curves) for higher skill drivers (>= 80)
+        if (car.progress <= 0.35 && car.skill >= 80) {
+          speedMult *= 1.15;
+        }
+      }
+
       // Weather penalty
       if (this.weather === 'wet') {
         speedMult *= 0.85;
@@ -305,8 +323,14 @@ const F1Simulator = {
           car.bestLap = lapTimeSec;
         }
 
-        // Random DNF Incident Chance (1.5% in dry, 3.5% in wet per lap)
-        const dnfThreshold = this.weather === 'wet' ? 0.035 : 0.015;
+        // Random DNF Incident Chance
+        let dnfThreshold = this.weather === 'wet' ? 0.035 : 0.015;
+        if (this.trackKey === 'monaco') {
+          dnfThreshold *= 1.30; // Monaco: +30% crash/SC chance
+        } else if (this.trackKey === 'interlagos' && this.weather === 'wet') {
+          dnfThreshold *= 1.25; // Interlagos: +25% crash chance under wet conditions
+        }
+
         if (Math.random() < dnfThreshold && car.lap > 1 && !this.safetyCarActive) {
           car.isDNF = true;
           car.dnfReason = this.weather === 'wet' ? 'Aquaplaned / Crash' : 'Engine Breakdown';

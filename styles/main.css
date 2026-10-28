@@ -46,7 +46,7 @@ body {
    SCREEN CONTAINER & TRANSITIONS
    ========================================================================== */
 .screen {
-  display: none;
+  display: none !important;
   min-height: 100vh;
   width: 100vw;
   opacity: 0;
@@ -54,8 +54,17 @@ body {
 }
 
 .screen.active {
-  display: block;
+  display: block !important;
   opacity: 1;
+}
+
+#screen-landing.active {
+  display: flex !important;
+}
+
+#screen-sim.active {
+  display: flex !important;
+  flex-direction: column;
 }
 
 /* Carbon Fiber Pattern Background */
@@ -193,6 +202,8 @@ body {
   transform: skewX(-10deg);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  text-align: center;
   gap: 8px;
   transition: all 0.2s ease;
 }
@@ -609,14 +620,21 @@ body {
 }
 
 .modal-card {
-  background: var(--bg-card);
-  border: 2px solid var(--f1-red);
+  background: var(--f1-red); /* Border color */
+  padding: 2px; /* 2px border thickness */
   box-shadow: 0 0 40px rgba(225, 6, 0, 0.4), 0 10px 40px rgba(0, 0, 0, 0.9);
   width: 90%;
   max-width: 500px;
-  padding: 30px;
   position: relative;
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+}
+
+.modal-card-inner {
+  background: var(--bg-card);
+  padding: 28px;
+  width: 100%;
+  height: 100%;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
 }
 
 .modal-large {
@@ -652,6 +670,8 @@ body {
 
 .modal-actions .btn-primary, .modal-actions .btn-secondary {
   flex: 1;
+  justify-content: center;
+  text-align: center;
 }
 
 /* ==========================================================================
