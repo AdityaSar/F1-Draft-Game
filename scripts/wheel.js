@@ -61,6 +61,10 @@ class WheelEngine {
 
     ctx.save();
     ctx.translate(centerX, centerY);
+    // Apply 3D Slanted/Skewed Perspective Scaling
+    ctx.scale(1.0, 0.85);
+
+    ctx.save();
     ctx.rotate(this.currentAngle);
 
     for (let i = 0; i < numSlices; i++) {
@@ -76,7 +80,7 @@ class WheelEngine {
       ctx.fillStyle = this.colors[i % this.colors.length];
       ctx.fill();
       ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
       ctx.stroke();
 
       // Draw Driver Name Text
@@ -89,7 +93,7 @@ class WheelEngine {
 
       // Adjust font size dynamically according to slice count
       const fontSize = Math.max(12, Math.min(18, 300 / numSlices));
-      ctx.font = `bold ${fontSize}px "Titillium Web", sans-serif`;
+      ctx.font = `bold ${fontSize}px 'Chakra Petch', 'Titillium Web', sans-serif`;
 
       const driverName = this.drivers[i];
       // Truncate name if too long
@@ -98,30 +102,70 @@ class WheelEngine {
       ctx.restore();
     }
 
-    // Outer Chrome Rim
+    // Outer Red & Chrome Metallic Chassis Rim
     ctx.beginPath();
     ctx.arc(0, 0, outerRadius, 0, 2 * Math.PI);
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 10;
     ctx.strokeStyle = '#E10600';
     ctx.stroke();
 
-    // Center Hub Cap
     ctx.beginPath();
-    ctx.arc(0, 0, innerRadius, 0, 2 * Math.PI);
+    ctx.arc(0, 0, outerRadius + 5, 0, 2 * Math.PI);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.stroke();
+
+    // Metallic Gear / Wheel Central Hub Structure
+    ctx.beginPath();
+    ctx.arc(0, 0, innerRadius + 6, 0, 2 * Math.PI);
+    ctx.fillStyle = '#1A1A26';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#383850';
+    ctx.stroke();
+
+    // Gear Teeth Accents on Central Hub
+    const numTeeth = 8;
+    for (let t = 0; t < numTeeth; t++) {
+      const toothAngle = (t * 2 * Math.PI) / numTeeth;
+      const tx = Math.cos(toothAngle) * (innerRadius + 4);
+      const ty = Math.sin(toothAngle) * (innerRadius + 4);
+      ctx.beginPath();
+      ctx.arc(tx, ty, 3, 0, 2 * Math.PI);
+      ctx.fillStyle = '#E10600';
+      ctx.fill();
+    }
+
+    // Inner Hub Cap
+    ctx.beginPath();
+    ctx.arc(0, 0, innerRadius - 2, 0, 2 * Math.PI);
     ctx.fillStyle = '#0B0B10';
     ctx.fill();
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 3;
     ctx.strokeStyle = '#E10600';
     ctx.stroke();
 
-    // Hub Text / F1 Logo Accent
+    // Engraved F1 Center Hub Typography
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'italic bold 16px "Titillium Web", sans-serif';
+    ctx.font = 'italic 900 18px "Chakra Petch", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('F1', 0, 0);
 
-    ctx.restore();
+    ctx.restore(); // Restore wheel rotation
+    ctx.restore(); // Restore perspective transform
+
+    // Draw Telemetry Laser Pointer Line down to center hub
+    const pulseGlow = Math.sin(performance.now() / 200) * 0.3 + 0.7;
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY - (outerRadius * 0.85));
+    ctx.lineTo(centerX, centerY - (innerRadius * 0.85));
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = `rgba(255, 51, 51, ${pulseGlow})`;
+    ctx.shadowColor = '#FF3333';
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    ctx.shadowBlur = 0; // Reset shadow blur
   }
 
   spin(onComplete) {

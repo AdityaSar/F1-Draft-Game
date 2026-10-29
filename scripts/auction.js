@@ -235,26 +235,39 @@ const AuctionManager = {
 
     F1App.state.players.forEach(p => {
       const tr = document.createElement('tr');
+      // Full-height player color left border accent
+      tr.style.borderLeft = `5px solid ${p.color}`;
 
       // Player Name Column with Color Indicator Tag
       const tdPlayer = document.createElement('td');
       tdPlayer.innerHTML = `
         <span class="badge-tag" style="background-color: ${p.color}; color: #FFF;">•</span>
-        <strong>${p.name}</strong>
+        <strong>${p.name.toUpperCase()}</strong>
       `;
 
       // Remaining Budget Column
       const tdBudget = document.createElement('td');
-      tdBudget.innerHTML = `<strong>$${p.remainingBudget}M</strong> / <span style="color:#8E8E9F">$${p.budget}M</span>`;
+      tdBudget.innerHTML = `<strong style="color:var(--text-primary);">$${p.remainingBudget}M</strong> <span style="color:#8E8E9F; font-size:0.8rem;">/ $${p.budget}M</span>`;
 
-      // Slots Column
+      // Graphical Roster Slots Bar
       const tdSlots = document.createElement('td');
-      tdSlots.textContent = `${p.roster.length} / ${F1App.state.maxDriversPerPlayer}`;
+      const slotContainer = document.createElement('div');
+      slotContainer.className = 'slot-bar';
+
+      const maxSlots = F1App.state.maxDriversPerPlayer;
+      const filledCount = p.roster.length;
+
+      for (let s = 0; s < maxSlots; s++) {
+        const slotBox = document.createElement('div');
+        slotBox.className = `slot-box ${s < filledCount ? 'filled' : ''}`;
+        slotContainer.appendChild(slotBox);
+      }
+      tdSlots.appendChild(slotContainer);
 
       // Drafted Roster Column
       const tdRoster = document.createElement('td');
       if (p.roster.length === 0) {
-        tdRoster.innerHTML = `<span style="color:#8E8E9F; font-style:italic;">No drivers drafted yet</span>`;
+        tdRoster.innerHTML = `<span class="telemetry-placeholder">-- / --</span>`;
       } else {
         const pillsDiv = document.createElement('div');
         pillsDiv.className = 'roster-pills';
@@ -278,7 +291,7 @@ const AuctionManager = {
     });
 
     // Update Drivers Left Badge
-    document.getElementById('remaining-drivers-badge').textContent = `${F1App.state.drivers.length} Drivers Left`;
+    document.getElementById('remaining-drivers-badge').textContent = `${F1App.state.drivers.length} DRIVERS LEFT`;
   },
 
   updateControlsState() {
