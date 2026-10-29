@@ -465,34 +465,33 @@ const F1Simulator = {
     };
 
     // 1. Draw Organic Circuit Path Vector Map
-    // Outer Border Accent: Sleek, uniform neon-red outer edge stroke (#E10600) with subtle glow
+    // Outer Border Accent: Clean, uniform red stroke (#E10600) along track edges
     drawSmoothPath();
-    ctx.lineWidth = 30;
+    ctx.lineWidth = 28;
     ctx.strokeStyle = '#E10600';
-    ctx.shadowColor = '#E10600';
-    ctx.shadowBlur = 12;
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
-    // Clean Dark Slate Gray Asphalt Base (#1A1A24)
+    // Track Surface: Solid black fill (#000000)
     drawSmoothPath();
-    ctx.lineWidth = 24;
-    ctx.strokeStyle = '#1A1A24';
+    ctx.lineWidth = 22;
+    ctx.strokeStyle = '#000000';
     ctx.stroke();
 
-    // Thin Elegant White Dashed Center Line (#FFFFFF)
+    // Track Centerline: Thin, dashed yellow line (#FFFF00) running down middle
     drawSmoothPath();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = '#FFFFFF';
+    ctx.strokeStyle = '#FFFF00';
     ctx.setLineDash([8, 8]);
     ctx.stroke();
     ctx.setLineDash([]); // Reset dash pattern
 
-    // Glowing Inner Racing Line (SC Indicator)
-    drawSmoothPath();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = this.safetyCarActive ? '#FFCC00' : 'rgba(225, 6, 0, 0.5)';
-    ctx.stroke();
+    // Safety Car Indicator Line overlay (Yellow warning outline when SC is active)
+    if (this.safetyCarActive) {
+      drawSmoothPath();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#FFCC00';
+      ctx.stroke();
+    }
 
     // Start/Finish Line Ribbon
     const startPt = track.path[0];
@@ -741,45 +740,39 @@ const F1Simulator = {
       driverTbody.appendChild(tr);
     });
 
-    // Show Victory Modal & Trigger Sequential Podium Reveal Sequence:
-    // PHASE 1 (Base Podium Reveal): P3 and P2 pillars immediately rise up and lock into position with name tags & scores. P1 remains hidden.
-    // PHASE 2 (Spotlight Search & Sweep): Volumetric spotlight activates and sweeps horizontally across stage (over P2 and P3).
-    // PHASE 3 (P1 Champion Lock-In & Reveal): Spotlight locks dead-center onto P1 with lightFlash pulse, P1 champion pillar rises, revealing champion name, total score, trophy, and launching particle confetti.
+    // Show Victory Modal & Trigger Kahoot-Style Sequential Rising Podium (No Spotlight)
     document.getElementById('results-modal').classList.remove('hidden');
 
-    // Reset initial animation classes
+    // Reset initial hidden state for all podium blocks & info cards
     document.querySelectorAll('.podium-block').forEach(b => b.classList.remove('raised'));
     document.querySelectorAll('.podium-driver-info').forEach(i => i.classList.remove('revealed'));
 
-    // PHASE 1: Immediately raise P3 & P2 pillars and reveal name cards
-    const p3Block = document.querySelector('.p3-block');
-    const p3Info = document.querySelector('#podium-slot-p3 .podium-driver-info');
-    const p2Block = document.querySelector('.p2-block');
-    const p2Info = document.querySelector('#podium-slot-p2 .podium-driver-info');
-
-    if (p3Block) p3Block.classList.add('raised');
-    if (p3Info) p3Info.classList.add('revealed');
-    if (p2Block) p2Block.classList.add('raised');
-    if (p2Info) p2Info.classList.add('revealed');
-
-    // PHASE 2: Activate volumetric spotlight beam sweep over P2 & P3 (starts after 300ms delay)
-    const spotlight = document.getElementById('podium-spotlight');
+    // PHASE 1 (3rd Place Reveal): P3 rises and locks into position
     setTimeout(() => {
-      spotlight.className = 'spotlight-beam active-sweep';
+      const p3Block = document.querySelector('.p3-block');
+      const p3Info = document.querySelector('#podium-slot-p3 .podium-driver-info');
+      if (p3Block) p3Block.classList.add('raised');
+      if (p3Info) p3Info.classList.add('revealed');
     }, 300);
 
-    // PHASE 3: After spotlight sweep (3.5s), lock dead-center onto P1, raise P1 pillar, reveal champion & launch confetti
+    // PHASE 2 (2nd Place Reveal): P2 rises and locks into position
     setTimeout(() => {
-      spotlight.className = 'spotlight-beam locked-p1';
+      const p2Block = document.querySelector('.p2-block');
+      const p2Info = document.querySelector('#podium-slot-p2 .podium-driver-info');
+      if (p2Block) p2Block.classList.add('raised');
+      if (p2Info) p2Info.classList.add('revealed');
+    }, 1200);
 
+    // PHASE 3 (1st Place Champion Reveal): Tall central P1 champion pillar rises, reveals champion name, trophy & confetti
+    setTimeout(() => {
       const p1Block = document.querySelector('.p1-block');
       const p1Info = document.querySelector('#podium-slot-p1 .podium-driver-info');
       if (p1Block) p1Block.classList.add('raised');
       if (p1Info) p1Info.classList.add('revealed');
 
-      // Instantly launch confetti particle burst
+      // Particle Confetti Burst
       this.launchConfetti();
-    }, 3800);
+    }, 2200);
   },
 
   launchConfetti() {
