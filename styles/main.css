@@ -12,19 +12,23 @@
    ========================================================================== */
 
 :root {
-  --bg-main: #15151E;
-  --bg-deep: #0B0B10;
-  --bg-card: #1F1F2C;
-  --bg-card-hover: #282838;
+  --bg-main: #060711;
+  --bg-deep: #04050A;
+  --bg-card: rgba(15, 18, 35, 0.7);
+  --bg-card-hover: rgba(25, 30, 55, 0.8);
+  --cyan-neon: #00F0FF;
+  --magenta-neon: #FF0075;
+  --yellow-signal: #FFE600;
   --f1-red: #E10600;
   --f1-red-bright: #FF3333;
-  --f1-red-glow: rgba(225, 6, 0, 0.4);
+  --cyan-glow: rgba(0, 240, 255, 0.4);
+  --magenta-glow: rgba(255, 0, 117, 0.4);
   --text-primary: #FFFFFF;
-  --text-secondary: #8E8E9F;
-  --border-color: #2A2A3C;
-  --border-red: rgba(225, 6, 0, 0.35);
-  --font-family: 'Chakra Petch', 'Titillium Web', sans-serif;
-  --gold-accent: #FFD700;
+  --text-secondary: #90A0C0;
+  --border-color: rgba(0, 240, 255, 0.2);
+  --border-cyan: rgba(0, 240, 255, 0.4);
+  --font-family: 'Orbitron', 'Chakra Petch', 'Titillium Web', sans-serif;
+  --gold-accent: #FFE600;
 }
 
 * {
@@ -35,7 +39,8 @@
 }
 
 body {
-  background-color: var(--bg-deep);
+  background-color: var(--bg-main);
+  background-image: radial-gradient(circle at 50% 0%, #101530 0%, #060711 75%);
   color: var(--text-primary);
   overflow-x: hidden;
   min-height: 100vh;
@@ -95,15 +100,21 @@ body {
   z-index: 1;
 }
 
-/* Card Panel Styling & Ambient Glow */
+/* Frosted Glass Container Cards & Cyberpunk Chamfered Corners */
 .card-panel {
-  background: linear-gradient(145deg, #1A1A28 0%, #12121B 100%);
-  border: 1px solid var(--border-red);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 25px rgba(225, 6, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-cyan);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px var(--cyan-glow), inset 0 1px 0 rgba(0, 240, 255, 0.2);
+  border-radius: 2px;
   padding: 24px;
   position: relative;
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+}
+
+.card-panel:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 240, 255, 0.5), inset 0 1px 0 rgba(0, 240, 255, 0.3);
 }
 
 /* Graphical Data Bar Roster Slots */

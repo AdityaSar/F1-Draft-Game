@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F1 Draft - Spin. Bid. Race.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,700;1,700&family=Titillium+Web:ital,wght@0,400;0,600;0,700;0,900;1,700;1,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+
+  <!-- ========================================= -->
+  <!-- SCREEN 0: LANDING PAGE -->
+  <!-- ========================================= -->
+  <section id="screen-landing" class="screen active">
+    <div class="carbon-bg"></div>
+    <div class="landing-content">
+      <div class="f1-badge">OFFICIAL UNLIMITED DRAFT</div>
+      <h1 class="f1-title">F1 DRAFT</h1>
+      <p class="f1-tagline">SPIN. BID. RACE.</p>
+      <button id="btn-start-draft" class="btn-primary btn-large">
+        <span>START DRAFT</span>
+        <svg class="chevron" viewBox="0 0 24 24"><path fill="currentColor" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- ========================================= -->
+  <!-- SCREEN 1: SETUP & CUSTOMIZATION -->
+  <!-- ========================================= -->
+  <section id="screen-setup" class="screen">
+    <div class="container">
+      <header class="setup-header">
+        <h2 class="section-title"><span class="red-bar"></span>SETUP & CUSTOMIZATION</h2>
+        <p class="subtitle">Configure your driver roster, player budgets, and draft constraints.</p>
+      </header>
+
+      <div class="setup-grid">
+        <!-- Driver Roster Input -->
+        <div class="panel card-panel">
+          <div class="panel-header">
+            <h3>DRIVER ROSTER</h3>
+            <span class="badge">LINE BREAK SEPARATED</span>
+          </div>
+          <p class="field-hint">Enter custom driver names (and optional skill 1-100) strictly separated by line breaks.</p>
+          <textarea id="setup-roster-input" class="form-textarea" rows="12" placeholder="Max Verstappen - 95&#10;Kimi Antonelli - 85&#10;Lewis Hamilton"></textarea>
+          <div class="roster-counter">Drivers Entered: <strong id="roster-count">0</strong></div>
+        </div>
+
+        <!-- Player & Budget Setup -->
+        <div class="panel card-panel">
+          <div class="panel-header">
+            <h3>PLAYERS & BUDGET</h3>
+            <span class="badge">GAME SETTINGS</span>
+          </div>
+
+          <div class="form-group">
+            <label for="input-player-count">Number of Players (2 - 10)</label>
+            <input type="number" id="input-player-count" class="form-input" min="2" max="10" value="3">
+          </div>
+
+          <div id="player-names-container" class="player-inputs-list">
+            <!-- Dynamic Player Name Inputs Injected Here -->
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="input-budget">Global Fixed Budget ($M)</label>
+              <input type="number" id="input-budget" class="form-input" min="10" max="1000" value="100">
+            </div>
+            <div class="form-group">
+              <label for="input-max-drivers">Max Drivers per Player (1 - 10)</label>
+              <input type="number" id="input-max-drivers" class="form-input" min="1" max="10" value="2">
+            </div>
+          </div>
+
+          <div id="setup-error" class="alert-banner alert-danger hidden"></div>
+
+          <button id="btn-start-auction" class="btn-primary btn-full">
+            <span>START AUCTION</span>
+            <svg class="chevron" viewBox="0 0 24 24"><path fill="currentColor" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================= -->
+  <!-- SCREEN 2: SPLIT-SCREEN AUCTION ROOM -->
+  <!-- ========================================= -->
+  <section id="screen-auction" class="screen">
+    <div class="auction-layout">
+      <!-- LEFT HALF: WHEEL COLUMN -->
+      <div class="auction-left-col">
+        <div class="wheel-panel card-panel">
+          <div class="panel-header">
+            <h3>DRAFT WHEEL</h3>
+            <span id="remaining-drivers-badge" class="badge badge-accent">0 Drivers Left</span>
+          </div>
+
+          <div class="canvas-wrapper">
+            <div class="wheel-pointer"></div>
+            <canvas id="wheel-canvas" width="500" height="500" style="cursor: pointer;"></canvas>
+          </div>
+          <div class="wheel-click-hint text-center" style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 700; letter-spacing: 1px; margin-top: 10px;">
+            CLICK WHEEL TO SPIN 🌀
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT HALF: PLAYER DASHBOARD COLUMN -->
+      <div class="auction-right-col">
+        <div class="dashboard-panel card-panel">
+          <div class="panel-header">
+            <h3>LIVE DRAFT DASHBOARD</h3>
+            <button id="btn-undo" class="btn-secondary btn-small" disabled>
+              <svg viewBox="0 0 24 24" class="icon"><path fill="currentColor" d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+              <span>Undo Last Sale</span>
+            </button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="f1-table" id="player-dashboard-table">
+              <thead>
+                <tr>
+                  <th>PLAYER</th>
+                  <th>BUDGET LEFT</th>
+                  <th>SLOTS</th>
+                  <th>DRAFTED ROSTER</th>
+                </tr>
+              </thead>
+              <tbody id="player-dashboard-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="auction-footer-controls">
+            <button id="btn-proceed-race" class="btn-primary btn-full btn-success btn-proceed" disabled>
+              <span>PROCEED TO RACE SIMULATION</span>
+              <span class="cta-arrow">➔</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POST-SPIN POP-UP MODAL -->
+    <div id="auction-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-card-inner">
+          <div class="modal-header">
+            <span class="modal-tag">DRIVER DRAWN</span>
+            <h2 id="modal-driver-name" class="driver-spotlight">MAX VERSTAPPEN</h2>
+          </div>
+
+          <div id="modal-warning-banner" class="alert-banner alert-warning hidden"></div>
+
+          <form id="auction-form" onsubmit="return false;">
+            <div class="form-group">
+              <label for="select-winning-player">Winning Player</label>
+              <select id="select-winning-player" class="form-select">
+                <!-- Dynamically populated with players -->
+              </select>
+            </div>
+
+            <div class="form-group" id="group-bid-amount">
+              <label for="input-bid-amount">Winning Bid Amount ($M)</label>
+              <input type="number" id="input-bid-amount" class="form-input" min="0" max="1000" step="1" value="10">
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" id="btn-confirm-bid" class="btn-primary">Confirm Assignment</button>
+              <button type="button" id="btn-pass-bid" class="btn-secondary">PASS</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================= -->
+  <!-- SCREEN 3: LIVE TRACK SIMULATOR & BROADCAST -->
+  <!-- ========================================= -->
+  <section id="screen-sim" class="screen">
+    <div class="sim-header-bar">
+      <div class="sim-title-group">
+        <h2 class="sim-logo"><span class="red-accent">F1</span> SIMULATOR</h2>
+        <span id="sim-status-badge" class="sim-badge">PRE-RACE GRID</span>
+      </div>
+
+      <!-- Controls Header -->
+      <div class="sim-controls-wrapper">
+        <div class="sim-control-item">
+          <label for="sim-track-select">Track Circuit</label>
+          <select id="sim-track-select" class="form-select select-compact">
+            <option value="monaco">Monaco - Circuit de Monaco</option>
+            <option value="monza" selected>Monza - Temple of Speed</option>
+            <option value="spa">Spa - Francorchamps</option>
+            <option value="silverstone">Silverstone - GP Circuit</option>
+            <option value="suzuka">Suzuka - International Racing Course</option>
+            <option value="interlagos">Interlagos - Autódromo José Carlos Pace</option>
+          </select>
+        </div>
+
+        <div class="sim-control-item">
+          <label for="sim-weather-select">Weather</label>
+          <select id="sim-weather-select" class="form-select select-compact">
+            <option value="dry" selected>☀️ Dry Conditions</option>
+            <option value="wet">🌧️ Wet / Heavy Rain</option>
+          </select>
+        </div>
+
+        <div class="sim-control-item btn-group">
+          <button id="btn-sim-play" class="btn-sim-ctrl btn-active">PLAY</button>
+          <button id="btn-sim-pause" class="btn-sim-ctrl">PAUSE</button>
+        </div>
+
+        <div class="sim-control-item speed-toggles">
+          <label>Speed</label>
+          <div class="speed-buttons">
+            <button class="btn-speed active" data-speed="1">NORMAL</button>
+            <button class="btn-speed" data-speed="5">5X</button>
+            <button class="btn-speed" data-speed="20">20X</button>
+            <button class="btn-speed" data-speed="50">50X</button>
+            <button id="btn-sim-instant" class="btn-speed btn-accent">INSTANT</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Telemetry Visualizer & Broadcast Layout -->
+    <div class="sim-main-layout">
+      <!-- Circuit Telemetry Map -->
+      <div class="sim-canvas-container card-panel">
+        <div class="telemetry-overlay">
+          <div class="telemetry-lap">LAP <span id="telemetry-current-lap">0</span> / <span id="telemetry-total-laps">20</span></div>
+          <div id="telemetry-weather-indicator" class="telemetry-weather">☀️ DRY</div>
+        </div>
+        <canvas id="sim-canvas" width="800" height="520"></canvas>
+      </div>
+
+      <!-- Live Broadcast Sidebar -->
+      <div class="sim-sidebar card-panel">
+        <div class="sidebar-tab-header">
+          <span class="tab-title active">LIVE LEADERBOARD</span>
+        </div>
+
+        <div class="table-responsive sidebar-table-wrap">
+          <table class="f1-table compact-table" id="sim-leaderboard-table">
+            <thead>
+              <tr>
+                <th>POS</th>
+                <th>DRIVER</th>
+                <th>TEAM</th>
+                <th>GAP</th>
+                <th>STATUS</th>
+              </tr>
+            </thead>
+            <tbody id="sim-leaderboard-tbody">
+              <!-- Dynamically updated per frame -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="commentary-panel">
+          <div class="commentary-header">
+            <span class="pulse-dot"></span>
+            <span>RACE CONTROL LOG & COMMENTARY</span>
+          </div>
+          <div id="commentary-feed" class="commentary-feed">
+            <div class="feed-item system">System: Simulation ready. Click Play to start the Grand Prix!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINAL RESULTS & CHAMPIONSHIP PODIUM MODAL -->
+    <div id="results-modal" class="modal-overlay hidden">
+      <canvas id="confetti-canvas"></canvas>
+      <div class="modal-card modal-large">
+        <div class="modal-card-inner">
+          <div class="modal-header text-center">
+            <span class="modal-tag text-gold">🏁 CHAMPIONSHIP CEREMONY</span>
+            <h1 id="champion-announcement" class="champion-title">PLAYER 1 WINS THE F1 DRAFT! 🏆</h1>
+          </div>
+
+          <!-- PHYSICAL 3-STEP PODIUM VIEW -->
+          <div class="podium-wrapper">
+            <!-- P2 Slot (Left) -->
+            <div id="podium-slot-p2" class="podium-slot p2">
+              <div class="podium-driver-info">
+                <div class="podium-rank">P2</div>
+                <div id="podium-p2-name" class="podium-player-name">--</div>
+                <div id="podium-p2-pts" class="podium-pts">-- PTS</div>
+              </div>
+              <div class="podium-block p2-block">2</div>
+            </div>
+
+            <!-- P1 Slot (Center Elevated) -->
+            <div id="podium-slot-p1" class="podium-slot p1">
+              <div class="trophy-badge">🏆</div>
+              <div class="podium-driver-info">
+                <div class="podium-rank p1-rank">P1 CHAMPION</div>
+                <div id="podium-p1-name" class="podium-player-name champion-name">--</div>
+                <div id="podium-p1-pts" class="podium-pts gold-pts">-- PTS</div>
+              </div>
+              <div class="podium-block p1-block">1</div>
+            </div>
+
+            <!-- P3 Slot (Right) -->
+            <div id="podium-slot-p3" class="podium-slot p3">
+              <div class="podium-driver-info">
+                <div class="podium-rank">P3</div>
+                <div id="podium-p3-name" class="podium-player-name">--</div>
+                <div id="podium-p3-pts" class="podium-pts">-- PTS</div>
+              </div>
+              <div class="podium-block p3-block">3</div>
+            </div>
+          </div>
+
+          <div class="results-grid">
+            <!-- Final Player Team Scores -->
+            <div class="results-box">
+              <h3>FINAL TEAM STANDINGS</h3>
+              <table class="f1-table" id="final-team-table">
+                <thead>
+                  <tr>
+                    <th>POS</th>
+                    <th>PLAYER</th>
+                    <th>ROSTER</th>
+                    <th>TOTAL POINTS</th>
+                  </tr>
+                </thead>
+                <tbody id="final-team-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Driver Classification -->
+            <div class="results-box">
+              <h3>DRIVER CLASSIFICATION & POINTS</h3>
+              <div class="table-responsive max-height-300">
+                <table class="f1-table compact-table" id="final-driver-table">
+                  <thead>
+                    <tr>
+                      <th>POS</th>
+                      <th>DRIVER</th>
+                      <th>PLAYER</th>
+                      <th>FASTEST LAP</th>
+                      <th>POINTS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="final-driver-tbody">
+                    <!-- Dynamically populated -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions text-center mt-20">
+            <button id="btn-restart-app" class="btn-primary btn-large">
+              <span>RETURN TO HOME</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- APP SCRIPTS -->
+  <script src="scripts/app.js"></script>
+  <script src="scripts/wheel.js"></script>
+  <script src="scripts/auction.js"></script>
+  <script src="scripts/simulator.js"></script>
+</body>
+</html>
