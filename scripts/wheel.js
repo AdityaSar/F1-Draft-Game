@@ -9,7 +9,7 @@ class WheelEngine {
     this.drivers = [];
     this.currentAngle = 0; // In radians
     this.isSpinning = false;
-    this.spinTimeout = null;
+    this.idleAnimId = null;
 
     // Visual Palette for Wheel Slices
     this.colors = [
@@ -20,11 +20,35 @@ class WheelEngine {
       '#B30000', // Dark F1 Red
       '#12121A'  // Chassis Black
     ];
+
+    this.startIdleAnimation();
   }
 
   setDrivers(driverList) {
     this.drivers = [...driverList];
     this.draw();
+  }
+
+  startIdleAnimation() {
+    if (this.idleAnimId) cancelAnimationFrame(this.idleAnimId);
+
+    const idleLoop = () => {
+      if (!this.isSpinning && this.drivers.length > 0) {
+        // Continuous slow rotation drift (~0.0035 rad/frame or ~0.2 deg)
+        this.currentAngle += 0.0035;
+        this.draw();
+      }
+      this.idleAnimId = requestAnimationFrame(idleLoop);
+    };
+
+    this.idleAnimId = requestAnimationFrame(idleLoop);
+  }
+
+  stopIdleAnimation() {
+    if (this.idleAnimId) {
+      cancelAnimationFrame(this.idleAnimId);
+      this.idleAnimId = null;
+    }
   }
 
   draw() {
@@ -49,7 +73,7 @@ class WheelEngine {
       ctx.stroke();
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 20px "Titillium Web", sans-serif';
+      ctx.font = 'bold 20px "Chakra Petch", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('WHEEL CLEARED', centerX, centerY);
@@ -61,9 +85,8 @@ class WheelEngine {
 
     ctx.save();
     ctx.translate(centerX, centerY);
-    // Apply 3D Slanted/Skewed Perspective Scaling
-    ctx.scale(1.0, 0.85);
 
+    // Clean flat top-down rotation without 3D skewing
     ctx.save();
     ctx.rotate(this.currentAngle);
 
@@ -91,12 +114,10 @@ class WheelEngine {
       ctx.textBaseline = 'middle';
       ctx.fillStyle = '#FFFFFF';
 
-      // Adjust font size dynamically according to slice count
       const fontSize = Math.max(12, Math.min(18, 300 / numSlices));
       ctx.font = `bold ${fontSize}px 'Chakra Petch', 'Titillium Web', sans-serif`;
 
       const driverName = this.drivers[i];
-      // Truncate name if too long
       const displayName = driverName.length > 16 ? driverName.substring(0, 14) + '..' : driverName;
       ctx.fillText(displayName.toUpperCase(), outerRadius - 20, 0);
       ctx.restore();
@@ -153,19 +174,19 @@ class WheelEngine {
     ctx.fillText('F1', 0, 0);
 
     ctx.restore(); // Restore wheel rotation
-    ctx.restore(); // Restore perspective transform
+    ctx.restore(); // Restore translate
 
     // Draw Telemetry Laser Pointer Line down to center hub
     const pulseGlow = Math.sin(performance.now() / 200) * 0.3 + 0.7;
     ctx.beginPath();
-    ctx.moveTo(centerX, centerY - (outerRadius * 0.85));
-    ctx.lineTo(centerX, centerY - (innerRadius * 0.85));
+    ctx.moveTo(centerX, centerY - outerRadius);
+    ctx.lineTo(centerX, centerY - innerRadius);
     ctx.lineWidth = 3;
     ctx.strokeStyle = `rgba(255, 51, 51, ${pulseGlow})`;
     ctx.shadowColor = '#FF3333';
     ctx.shadowBlur = 10;
     ctx.stroke();
-    ctx.shadowBlur = 0; // Reset shadow blur
+    ctx.shadowBlur = 0;
   }
 
   spin(onComplete) {

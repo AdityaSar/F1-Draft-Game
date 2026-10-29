@@ -16,10 +16,16 @@ const AuctionManager = {
     this.renderPlayerTable();
     this.updateControlsState();
 
-    // 3. Attach Event Listeners
-    const btnSpin = document.getElementById('btn-spin');
-    btnSpin.replaceWith(btnSpin.cloneNode(true));
-    document.getElementById('btn-spin').addEventListener('click', () => {
+    // 3. Attach Canvas Wheel Click Event Listener
+    const wheelCanvas = document.getElementById('wheel-canvas');
+    wheelCanvas.replaceWith(wheelCanvas.cloneNode(true));
+    const newCanvas = document.getElementById('wheel-canvas');
+    if (globalWheelEngine) {
+      globalWheelEngine.canvas = newCanvas;
+      globalWheelEngine.ctx = newCanvas.getContext('2d');
+      globalWheelEngine.draw();
+    }
+    newCanvas.addEventListener('click', () => {
       this.spinWheel();
     });
 
@@ -57,13 +63,9 @@ const AuctionManager = {
   },
 
   spinWheel() {
-    if (F1App.state.drivers.length === 0) return;
-
-    const btnSpin = document.getElementById('btn-spin');
-    btnSpin.disabled = true;
+    if (F1App.state.drivers.length === 0 || globalWheelEngine.isSpinning) return;
 
     globalWheelEngine.spin((selectedDriver) => {
-      btnSpin.disabled = false;
       this.currentDrawnDriver = selectedDriver;
       this.openAuctionModal(selectedDriver);
     });
@@ -297,9 +299,6 @@ const AuctionManager = {
   updateControlsState() {
     // Undo button state
     document.getElementById('btn-undo').disabled = F1App.state.auctionHistory.length === 0;
-
-    // Spin button state
-    document.getElementById('btn-spin').disabled = F1App.state.drivers.length === 0;
 
     // Proceed to Race Button condition:
     // Unlocked if all players have at least 1 driver, OR all wheel options are exhausted/filled

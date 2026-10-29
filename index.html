@@ -44,8 +44,8 @@
             <h3>DRIVER ROSTER</h3>
             <span class="badge">LINE BREAK SEPARATED</span>
           </div>
-          <p class="field-hint">Enter custom driver names strictly separated by line breaks (Enter key).</p>
-          <textarea id="setup-roster-input" class="form-textarea" rows="12" placeholder="Max Verstappen&#10;Lewis Hamilton&#10;Charles Leclerc&#10;Lando Norris&#10;Fernando Alonso&#10;Carlos Sainz&#10;George Russell&#10;Oscar Piastri"></textarea>
+          <p class="field-hint">Enter custom driver names (and optional skill 1-100) strictly separated by line breaks.</p>
+          <textarea id="setup-roster-input" class="form-textarea" rows="12" placeholder="Max Verstappen - 95&#10;Kimi Antonelli - 85&#10;Lewis Hamilton"></textarea>
           <div class="roster-counter">Drivers Entered: <strong id="roster-count">0</strong></div>
         </div>
 
@@ -57,8 +57,8 @@
           </div>
 
           <div class="form-group">
-            <label for="input-player-count">Number of Players (2 - 8)</label>
-            <input type="number" id="input-player-count" class="form-input" min="2" max="8" value="3">
+            <label for="input-player-count">Number of Players (2 - 10)</label>
+            <input type="number" id="input-player-count" class="form-input" min="2" max="10" value="3">
           </div>
 
           <div id="player-names-container" class="player-inputs-list">
@@ -71,13 +71,8 @@
               <input type="number" id="input-budget" class="form-input" min="10" max="1000" value="100">
             </div>
             <div class="form-group">
-              <label for="input-max-drivers">Max Drivers per Player</label>
-              <select id="input-max-drivers" class="form-select">
-                <option value="2" selected>2 Drivers</option>
-                <option value="3">3 Drivers</option>
-                <option value="4">4 Drivers</option>
-                <option value="5">5 Drivers</option>
-              </select>
+              <label for="input-max-drivers">Max Drivers per Player (1 - 10)</label>
+              <input type="number" id="input-max-drivers" class="form-input" min="1" max="10" value="2">
             </div>
           </div>
 
@@ -107,14 +102,10 @@
 
           <div class="canvas-wrapper">
             <div class="wheel-pointer"></div>
-            <canvas id="wheel-canvas" width="500" height="500"></canvas>
+            <canvas id="wheel-canvas" width="500" height="500" style="cursor: pointer;"></canvas>
           </div>
-
-          <div class="wheel-controls">
-            <button id="btn-spin" class="btn-primary btn-large btn-spin">
-              <span class="play-icon">▶</span>
-              <span>SPIN WHEEL</span>
-            </button>
+          <div class="wheel-click-hint text-center" style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 700; letter-spacing: 1px; margin-top: 10px;">
+            CLICK WHEEL TO SPIN 🌀
           </div>
         </div>
       </div>
@@ -286,61 +277,98 @@
       </div>
     </div>
 
-    <!-- FINAL RESULTS & STANDINGS MODAL -->
+    <!-- FINAL RESULTS & CHAMPIONSHIP PODIUM MODAL -->
     <div id="results-modal" class="modal-overlay hidden">
+      <canvas id="confetti-canvas"></canvas>
       <div class="modal-card modal-large">
         <div class="modal-card-inner">
-        <div class="modal-header text-center">
-          <span class="modal-tag text-gold">🏁 RACE FINISHED</span>
-          <h1 id="champion-announcement" class="champion-title">PLAYER 1 WINS THE F1 DRAFT!</h1>
-        </div>
-
-        <div class="results-grid">
-          <!-- Final Player Team Scores -->
-          <div class="results-box">
-            <h3>FINAL TEAM STANDINGS</h3>
-            <table class="f1-table" id="final-team-table">
-              <thead>
-                <tr>
-                  <th>POS</th>
-                  <th>PLAYER</th>
-                  <th>ROSTER</th>
-                  <th>TOTAL POINTS</th>
-                </tr>
-              </thead>
-              <tbody id="final-team-tbody">
-                <!-- Dynamically populated -->
-              </tbody>
-            </table>
+          <div class="modal-header text-center">
+            <span class="modal-tag text-gold">🏁 CHAMPIONSHIP CEREMONY</span>
+            <h1 id="champion-announcement" class="champion-title">PLAYER 1 WINS THE F1 DRAFT! 🏆</h1>
           </div>
 
-          <!-- Driver Classification -->
-          <div class="results-box">
-            <h3>DRIVER CLASSIFICATION & POINTS</h3>
-            <div class="table-responsive max-height-300">
-              <table class="f1-table compact-table" id="final-driver-table">
+          <!-- PHYSICAL 3-STEP PODIUM VIEW -->
+          <div class="podium-wrapper">
+            <div id="podium-spotlight" class="spotlight-beam"></div>
+
+            <!-- P2 Slot (Left) -->
+            <div id="podium-slot-p2" class="podium-slot p2">
+              <div class="podium-driver-info">
+                <div class="podium-rank">P2</div>
+                <div id="podium-p2-name" class="podium-player-name">--</div>
+                <div id="podium-p2-pts" class="podium-pts">-- PTS</div>
+              </div>
+              <div class="podium-block p2-block">2</div>
+            </div>
+
+            <!-- P1 Slot (Center Elevated) -->
+            <div id="podium-slot-p1" class="podium-slot p1">
+              <div class="trophy-badge">🏆</div>
+              <div class="podium-driver-info">
+                <div class="podium-rank p1-rank">P1 CHAMPION</div>
+                <div id="podium-p1-name" class="podium-player-name champion-name">--</div>
+                <div id="podium-p1-pts" class="podium-pts gold-pts">-- PTS</div>
+              </div>
+              <div class="podium-block p1-block">1</div>
+            </div>
+
+            <!-- P3 Slot (Right) -->
+            <div id="podium-slot-p3" class="podium-slot p3">
+              <div class="podium-driver-info">
+                <div class="podium-rank">P3</div>
+                <div id="podium-p3-name" class="podium-player-name">--</div>
+                <div id="podium-p3-pts" class="podium-pts">-- PTS</div>
+              </div>
+              <div class="podium-block p3-block">3</div>
+            </div>
+          </div>
+
+          <div class="results-grid">
+            <!-- Final Player Team Scores -->
+            <div class="results-box">
+              <h3>FINAL TEAM STANDINGS</h3>
+              <table class="f1-table" id="final-team-table">
                 <thead>
                   <tr>
                     <th>POS</th>
-                    <th>DRIVER</th>
                     <th>PLAYER</th>
-                    <th>FASTEST LAP</th>
-                    <th>POINTS</th>
+                    <th>ROSTER</th>
+                    <th>TOTAL POINTS</th>
                   </tr>
                 </thead>
-                <tbody id="final-driver-tbody">
+                <tbody id="final-team-tbody">
                   <!-- Dynamically populated -->
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
 
-        <div class="modal-actions text-center mt-20">
-          <button id="btn-restart-app" class="btn-primary btn-large">
-            <span>NEW DRAFT</span>
-          </button>
-        </div>
+            <!-- Driver Classification -->
+            <div class="results-box">
+              <h3>DRIVER CLASSIFICATION & POINTS</h3>
+              <div class="table-responsive max-height-300">
+                <table class="f1-table compact-table" id="final-driver-table">
+                  <thead>
+                    <tr>
+                      <th>POS</th>
+                      <th>DRIVER</th>
+                      <th>PLAYER</th>
+                      <th>FASTEST LAP</th>
+                      <th>POINTS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="final-driver-tbody">
+                    <!-- Dynamically populated -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions text-center mt-20">
+            <button id="btn-restart-app" class="btn-primary btn-large">
+              <span>RETURN TO HOME</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

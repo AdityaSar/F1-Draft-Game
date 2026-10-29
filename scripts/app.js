@@ -5,15 +5,16 @@
 const F1App = {
   // Global Application State
   state: {
-    drivers: [],              // Remaining drivers on the wheel
+    drivers: [],              // Remaining driver names on the wheel
     allDrivers: [],           // Master list of driver names
+    driverMap: {},            // Map of driverName -> { name, skill }
     players: [],              // Player list [{ id, name, budget, remainingBudget, color, roster: [] }]
     globalBudget: 100,        // Default fixed budget ($M)
     maxDriversPerPlayer: 2,   // Max roster size per player
     auctionHistory: []        // History stack for undo functionality
   },
 
-  // Color Palette for Players
+  // Color Palette for Players (supports up to 10 players)
   playerColors: [
     '#E10600', // Official F1 Red
     '#00D2BE', // Mercedes Cyan/Teal
@@ -22,8 +23,33 @@ const F1App = {
     '#006F62', // Aston Martin Green
     '#C92D4B', // Alfa Romeo Burgundy
     '#52E252', // Sauber Neon Green
-    '#B6BABD'  // Haas Silver
+    '#B6BABD', // Haas Silver
+    '#FFD700', // Ferrari Gold
+    '#9C27B0'  // Alpine Purple
   ],
+
+  // Parse driver roster line formatted as "Driver Name - Skill"
+  parseDriverLine(line) {
+    if (!line || !line.trim()) return null;
+    const parts = line.split('-');
+    const name = parts[0].trim();
+    if (!name) return null;
+
+    let skill = 82; // Default fallback baseline
+    if (parts.length > 1) {
+      const rawVal = parseFloat(parts[1].trim());
+      if (!isNaN(rawVal)) {
+        if (rawVal <= 10 && rawVal >= 1) {
+          // Normalize 1-10 scale up cleanly to 70-99 rating scale
+          skill = Math.round(70 + ((rawVal - 1) / 9) * 29);
+        } else if (rawVal > 10 && rawVal <= 100) {
+          // Standard scale 11-100 used directly
+          skill = Math.round(rawVal);
+        }
+      }
+    }
+    return { name, skill };
+  },
 
   // Navigation Controller
   navigateTo(screenId) {
@@ -42,29 +68,41 @@ const F1App = {
   // Initialize Setup Form Dynamic Inputs
   initSetupControls() {
     const playerCountInput = document.getElementById('input-player-count');
+    const maxDriversInput = document.getElementById('input-max-drivers');
     const rosterTextarea = document.getElementById('setup-roster-input');
     const rosterCountEl = document.getElementById('roster-count');
+    const errorBanner = document.getElementById('setup-error');
+    const startAuctionBtn = document.getElementById('btn-start-auction');
 
     // Ensure textarea loads completely blank as requested
     rosterTextarea.value = '';
 
-    const updateRosterCount = () => {
+    const validateSetupRealTime = () => {
       const rawText = rosterTextarea.value;
-      const drivers = rawText
-        .split('\n')
-        .map(d => d.trim())
-        .filter(d => d.length > 0);
+      const lines = rawText.split('\n');
+      const parsedDrivers = lines.map(line => this.parseDriverLine(line)).filter(d => d !== null);
 
-      // Filter unique
-      const uniqueDrivers = [...new Set(drivers)];
-      rosterCountEl.textContent = uniqueDrivers.length;
+      // Unique driver names
+      const uniqueNames = [...new Set(parsedDrivers.map(d => d.name))];
+      rosterCountEl.textContent = uniqueNames.length;
+
+      const playerCount = parseInt(playerCountInput.value, 10) || 2;
+      const maxDrivers = parseInt(maxDriversInput.value, 10) || 2;
+      const requiredDrivers = playerCount * maxDrivers;
+
+      if (uniqueNames.length < requiredDrivers) {
+        errorBanner.textContent = `⚠️ WARNING: You need at least ${requiredDrivers} unique drivers for ${playerCount} players with ${maxDrivers} drivers each! (Currently entered: ${uniqueNames.length})`;
+        errorBanner.classList.remove('hidden');
+        startAuctionBtn.disabled = true;
+      } else {
+        errorBanner.classList.add('hidden');
+        errorBanner.textContent = '';
+        startAuctionBtn.disabled = false;
+      }
     };
 
-    rosterTextarea.addEventListener('input', updateRosterCount);
-    updateRosterCount();
-
     const generatePlayerInputs = () => {
-      const count = parseInt(playerCountInput.value, 10) || 2;
+      const count = Math.min(10, Math.max(2, parseInt(playerCountInput.value, 10) || 2));
       const container = document.getElementById('player-names-container');
       container.innerHTML = '';
 
@@ -77,40 +115,47 @@ const F1App = {
         `;
         container.appendChild(div);
       }
+
+      validateSetupRealTime();
     };
 
-    playerCountInput.addEventListener('change', generatePlayerInputs);
+    rosterTextarea.addEventListener('input', validateSetupRealTime);
     playerCountInput.addEventListener('input', generatePlayerInputs);
+    playerCountInput.addEventListener('change', generatePlayerInputs);
+    maxDriversInput.addEventListener('input', validateSetupRealTime);
+    maxDriversInput.addEventListener('change', validateSetupRealTime);
+
     generatePlayerInputs();
   },
 
   // Validate Screen 1 Inputs and Launch Auction
   validateAndStartAuction() {
     const errorBanner = document.getElementById('setup-error');
-    errorBanner.classList.add('hidden');
-    errorBanner.textContent = '';
+    const startAuctionBtn = document.getElementById('btn-start-auction');
 
-    // 1. Validate Driver Roster
     const rawRoster = document.getElementById('setup-roster-input').value;
-    const drivers = rawRoster
-      .split('\n')
-      .map(d => d.trim())
-      .filter(d => d.length > 0);
+    const lines = rawRoster.split('\n');
+    const parsedDrivers = lines.map(line => this.parseDriverLine(line)).filter(d => d !== null);
 
-    // Deduplicate drivers
-    const uniqueDrivers = [...new Set(drivers)];
+    // Build unique driver list & driverMap
+    const driverMap = {};
+    const uniqueNames = [];
 
-    if (uniqueDrivers.length < 2) {
-      errorBanner.textContent = 'ERROR: Please enter at least 2 unique driver names (separated strictly by line breaks).';
+    parsedDrivers.forEach(d => {
+      if (!driverMap[d.name]) {
+        driverMap[d.name] = d;
+        uniqueNames.push(d.name);
+      }
+    });
+
+    const playerCount = Math.min(10, Math.max(2, parseInt(document.getElementById('input-player-count').value, 10) || 2));
+    const maxDrivers = Math.min(10, Math.max(1, parseInt(document.getElementById('input-max-drivers').value, 10) || 2));
+    const requiredDrivers = playerCount * maxDrivers;
+
+    if (uniqueNames.length < requiredDrivers) {
+      errorBanner.textContent = `⚠️ WARNING: You need at least ${requiredDrivers} unique drivers for ${playerCount} players with ${maxDrivers} drivers each!`;
       errorBanner.classList.remove('hidden');
-      return;
-    }
-
-    // 2. Validate Player Settings
-    const playerCount = parseInt(document.getElementById('input-player-count').value, 10);
-    if (isNaN(playerCount) || playerCount < 2 || playerCount > 8) {
-      errorBanner.textContent = 'ERROR: Number of players must be between 2 and 8.';
-      errorBanner.classList.remove('hidden');
+      startAuctionBtn.disabled = true;
       return;
     }
 
@@ -126,26 +171,12 @@ const F1App = {
       playerNames.push(name);
     }
 
-    // 3. Validate Global Budget & Max Drivers
-    const budget = parseFloat(document.getElementById('input-budget').value);
-    if (isNaN(budget) || budget <= 0) {
-      errorBanner.textContent = 'ERROR: Please enter a valid positive Global Fixed Budget ($M).';
-      errorBanner.classList.remove('hidden');
-      return;
-    }
-
-    const maxDrivers = parseInt(document.getElementById('input-max-drivers').value, 10);
-    const minRequiredDrivers = playerCount * maxDrivers;
-
-    if (uniqueDrivers.length < minRequiredDrivers) {
-      errorBanner.textContent = `WARNING: You entered ${uniqueDrivers.length} drivers, but ${playerCount} players with max ${maxDrivers} drivers require at least ${minRequiredDrivers} drivers. Please add more driver names.`;
-      errorBanner.classList.remove('hidden');
-      return;
-    }
+    const budget = parseFloat(document.getElementById('input-budget').value) || 100;
 
     // Initialize Game State
-    this.state.allDrivers = [...uniqueDrivers];
-    this.state.drivers = [...uniqueDrivers];
+    this.state.driverMap = driverMap;
+    this.state.allDrivers = [...uniqueNames];
+    this.state.drivers = [...uniqueNames];
     this.state.globalBudget = budget;
     this.state.maxDriversPerPlayer = maxDrivers;
     this.state.auctionHistory = [];

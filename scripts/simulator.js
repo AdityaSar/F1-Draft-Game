@@ -179,20 +179,22 @@ const F1Simulator = {
     this.cars = [];
     let carId = 1;
 
-    // Collect all drafted drivers across all players
+    // Collect all drafted drivers across all players using custom normalized driver skill ratings
     F1App.state.players.forEach(player => {
       player.roster.forEach(item => {
-        // Assign base skill level between 70 and 99
-        const baseSkill = 70 + Math.floor(Math.random() * 29);
-        // Qualifying lap variance
-        const qualyTime = (100 - baseSkill) + (Math.random() * 3 - 1.5);
+        // Look up skill from global driverMap or item object fallback
+        const driverData = F1App.state.driverMap[item.name];
+        const driverSkill = item.skill || (driverData ? driverData.skill : 82);
+
+        // Qualifying time formula strictly reflects driver skill rating + slight random variance
+        const qualyTime = (100 - driverSkill) + (Math.random() * 1.5 - 0.75);
 
         this.cars.push({
           id: carId++,
           driverName: item.name,
           playerName: player.name,
           color: player.color,
-          skill: baseSkill,
+          skill: driverSkill,
           qualyTime: qualyTime,
           // Telemetry
           progress: 0, // 0 to 1 along circuit
@@ -397,14 +399,18 @@ const F1Simulator = {
 
       const gap = (ahead.lap + ahead.progress) - (behind.lap + behind.progress);
 
+      // Skill-weighted overtake probability: higher-skilled driver behind has much higher chance to pass
+      const skillDiff = behind.skill - ahead.skill;
+      const baseOvertakeChance = 0.05 + (skillDiff / 100) * 0.12;
+
       // Proximity threshold for overtake
-      if (gap < 0.005 && !this.safetyCarActive && Math.random() < 0.08) {
+      if (gap < 0.006 && !this.safetyCarActive && Math.random() < Math.max(0.01, baseOvertakeChance)) {
         // Perform swap
         const tempProg = ahead.progress;
         ahead.progress = behind.progress;
         behind.progress = tempProg;
 
-        this.logCommentary(`⚔️ OVERTAKE! ${behind.driverName} (${behind.playerName}) passes ${ahead.driverName}!`, 'overtake');
+        this.logCommentary(`⚔️ OVERTAKE! ${behind.driverName} (Skill: ${behind.skill}) passes ${ahead.driverName}!`, 'overtake');
         break;
       }
     }
@@ -614,25 +620,58 @@ const F1Simulator = {
       car.pointsAwarded = points;
     });
 
-    // 3. Aggregate Team Points for Players
+    // 3. Aggregate Team Points & Evaluate Tie-Breakers
     const teamScores = F1App.state.players.map(player => {
       const playerDrivers = finalClassification.filter(c => c.playerName === player.name);
       const totalPoints = playerDrivers.reduce((sum, d) => sum + d.pointsAwarded, 0);
 
+      // Best individual driver position among player's roster
+      const driverPositions = playerDrivers.map(d => finalClassification.indexOf(d) + 1);
+      const bestFinish = driverPositions.length > 0 ? Math.min(...driverPositions) : 999;
+
       return {
+        id: player.id,
         playerName: player.name,
         color: player.color,
+        remainingBudget: player.remainingBudget,
         rosterNames: player.roster.map(r => r.name).join(', '),
-        totalPoints: totalPoints
+        totalPoints: totalPoints,
+        bestFinish: bestFinish
       };
     });
 
-    // Sort Team Champions by Total Points
-    teamScores.sort((a, b) => b.totalPoints - a.totalPoints);
+    // Sort Team Champions strictly with Tie-Breaker Rules:
+    // 1) Total Points (descending)
+    // 2) Highest single-driver finish (best position ascending)
+    // 3) Remaining budget (descending)
+    teamScores.sort((a, b) => {
+      if (b.totalPoints !== a.totalPoints) {
+        return b.totalPoints - a.totalPoints;
+      }
+      if (a.bestFinish !== b.bestFinish) {
+        return a.bestFinish - b.bestFinish;
+      }
+      return b.remainingBudget - a.remainingBudget;
+    });
+
     const winningPlayer = teamScores[0];
 
-    // 4. Populate Results Overlay
+    // 4. Populate Results Overlay & Physical Podium Slots
     document.getElementById('champion-announcement').textContent = `${winningPlayer.playerName.toUpperCase()} WINS THE F1 DRAFT! 🏆`;
+
+    // Populate Podium P1, P2, P3 Slot text
+    const p1Team = teamScores[0] || { playerName: '--', totalPoints: 0 };
+    const p2Team = teamScores[1] || { playerName: '--', totalPoints: 0 };
+    const p3Team = teamScores[2] || { playerName: '--', totalPoints: 0 };
+
+    document.getElementById('podium-p1-name').textContent = p1Team.playerName.toUpperCase();
+    document.getElementById('podium-p1-pts').textContent = `${p1Team.totalPoints} PTS`;
+
+    document.getElementById('podium-p2-name').textContent = p2Team.playerName.toUpperCase();
+    document.getElementById('podium-p2-pts').textContent = `${p2Team.totalPoints} PTS`;
+
+    document.getElementById('podium-p3-name').textContent = p3Team.playerName.toUpperCase();
+    document.getElementById('podium-p3-pts').textContent = `${p3Team.totalPoints} PTS`;
 
     // Render Final Team Table
     const teamTbody = document.getElementById('final-team-tbody');
@@ -663,7 +702,68 @@ const F1Simulator = {
       driverTbody.appendChild(tr);
     });
 
-    // Show Victory Modal
+    // Show Victory Modal & Initiate Suspense Spotlight Sweep + Confetti Burst
     document.getElementById('results-modal').classList.remove('hidden');
+
+    const spotlight = document.getElementById('podium-spotlight');
+    spotlight.classList.remove('active-sweep');
+    // Force reflow
+    void spotlight.offsetWidth;
+    spotlight.classList.add('active-sweep');
+
+    // Launch Particle Confetti Burst
+    this.launchConfetti();
+  },
+
+  launchConfetti() {
+    const canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+
+    const particles = [];
+    const colors = ['#E10600', '#FFD700', '#FFFFFF', '#00D2BE', '#FF8000', '#3671C6'];
+
+    for (let i = 0; i < 120; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        vx: Math.random() * 4 - 2,
+        vy: Math.random() * 5 + 3,
+        size: Math.random() * 8 + 4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rotation: Math.random() * 360,
+        rSpeed: Math.random() * 6 - 3
+      });
+    }
+
+    let duration = 180; // 3 seconds at 60fps
+    const renderConfetti = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rotation += p.rSpeed;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 1.5);
+        ctx.restore();
+      });
+
+      duration--;
+      if (duration > 0) {
+        requestAnimationFrame(renderConfetti);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    };
+
+    requestAnimationFrame(renderConfetti);
   }
 };
