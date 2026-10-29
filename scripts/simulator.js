@@ -443,7 +443,12 @@ const F1Simulator = {
       const points = track.path.map(pt => ({ x: pt.x * width, y: pt.y * height }));
       const len = points.length;
 
-      ctx.moveTo(points[0].x, points[0].y);
+      const pLast = points[len - 1];
+      const pFirst = points[0];
+      const startMidX = (pLast.x + pFirst.x) / 2;
+      const startMidY = (pLast.y + pFirst.y) / 2;
+
+      ctx.moveTo(startMidX, startMidY);
       for (let i = 0; i < len; i++) {
         const p1 = points[i];
         const p2 = points[(i + 1) % len];
@@ -731,17 +736,52 @@ const F1Simulator = {
       driverTbody.appendChild(tr);
     });
 
-    // Show Victory Modal & Initiate Suspense Spotlight Sweep + Confetti Burst
+    // Show Victory Modal & Trigger Kahoot-Style Cinematic Spotlight & Podium Reveal Sequence
     document.getElementById('results-modal').classList.remove('hidden');
 
-    const spotlight = document.getElementById('podium-spotlight');
-    spotlight.classList.remove('active-sweep');
-    // Force reflow
-    void spotlight.offsetWidth;
-    spotlight.classList.add('active-sweep');
+    // Reset initial animation classes for podium blocks & driver info cards
+    document.querySelectorAll('.podium-block').forEach(b => b.classList.remove('raised'));
+    document.querySelectorAll('.podium-driver-info').forEach(i => i.classList.remove('revealed'));
 
-    // Launch Particle Confetti Burst
-    this.launchConfetti();
+    const spotlight = document.getElementById('podium-spotlight');
+    spotlight.className = 'spotlight-beam active-sweep';
+
+    // Timeline Sequence for Kahoot-style Reveal:
+    // 1. Spotlight sweeps across stage for 3.2s
+    // 2. Lock spotlight onto P1 with lightFlash pulse
+    // 3. Raise P3, then P2, then P1 blocks sequentially
+    // 4. Reveal player names & trigger confetti on P1 lockdown
+    setTimeout(() => {
+      spotlight.className = 'spotlight-beam locked-p1';
+
+      // Raise P3 block (3rd place)
+      setTimeout(() => {
+        const p3Block = document.querySelector('.p3-block');
+        const p3Info = document.querySelector('#podium-slot-p3 .podium-driver-info');
+        if (p3Block) p3Block.classList.add('raised');
+        if (p3Info) p3Info.classList.add('revealed');
+      }, 200);
+
+      // Raise P2 block (2nd place)
+      setTimeout(() => {
+        const p2Block = document.querySelector('.p2-block');
+        const p2Info = document.querySelector('#podium-slot-p2 .podium-driver-info');
+        if (p2Block) p2Block.classList.add('raised');
+        if (p2Info) p2Info.classList.add('revealed');
+      }, 600);
+
+      // Raise P1 Champion block (1st place), reveal champion & launch confetti
+      setTimeout(() => {
+        const p1Block = document.querySelector('.p1-block');
+        const p1Info = document.querySelector('#podium-slot-p1 .podium-driver-info');
+        if (p1Block) p1Block.classList.add('raised');
+        if (p1Info) p1Info.classList.add('revealed');
+
+        // Trigger Confetti Burst
+        this.launchConfetti();
+      }, 1000);
+
+    }, 3200);
   },
 
   launchConfetti() {
