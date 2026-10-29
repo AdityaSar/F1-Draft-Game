@@ -373,17 +373,24 @@ const F1Simulator = {
     const path = track.path;
     const numPoints = path.length;
 
-    const exactIndex = progress * numPoints;
+    const exactIndex = (progress % 1) * numPoints;
     const idx1 = Math.floor(exactIndex) % numPoints;
+    const idx0 = (idx1 - 1 + numPoints) % numPoints;
     const idx2 = (idx1 + 1) % numPoints;
     const t = exactIndex - Math.floor(exactIndex);
 
+    const p0 = path[idx0];
     const p1 = path[idx1];
     const p2 = path[idx2];
 
-    // Smooth linear interpolation between waypoints
-    const x = (p1.x + t * (p2.x - p1.x)) * width;
-    const y = (p1.y + t * (p2.y - p1.y)) * height;
+    // Smooth quadratic spline point calculation matching curve rendering
+    const mid1X = (p0.x + p1.x) / 2;
+    const mid1Y = (p0.y + p1.y) / 2;
+    const mid2X = (p1.x + p2.x) / 2;
+    const mid2Y = (p1.y + p2.y) / 2;
+
+    const x = ((1 - t) * (1 - t) * mid1X + 2 * (1 - t) * t * p1.x + t * t * mid2X) * width;
+    const y = ((1 - t) * (1 - t) * mid1Y + 2 * (1 - t) * t * p1.y + t * t * mid2Y) * height;
 
     return { x, y };
   },
@@ -430,36 +437,58 @@ const F1Simulator = {
 
     ctx.clearRect(0, 0, width, height);
 
-    // 1. Draw Circuit Path Vector Map
-    ctx.beginPath();
-    track.path.forEach((pt, i) => {
-      const x = pt.x * width;
-      const y = pt.y * height;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.closePath();
+    // Helper to draw smooth organic curves via quadratic spline interpolation
+    const drawSmoothPath = () => {
+      ctx.beginPath();
+      const points = track.path.map(pt => ({ x: pt.x * width, y: pt.y * height }));
+      const len = points.length;
 
-    // Asphalt Track Base
-    ctx.lineWidth = 28;
-    ctx.strokeStyle = '#1E1E2A';
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 0; i < len; i++) {
+        const p1 = points[i];
+        const p2 = points[(i + 1) % len];
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+        ctx.quadraticCurveTo(p1.x, p1.y, midX, midY);
+      }
+      ctx.closePath();
+    };
+
+    // 1. Draw Organic Circuit Path Vector Map
+    // Outer Neon Red Glow Border
+    drawSmoothPath();
+    ctx.lineWidth = 34;
+    ctx.strokeStyle = 'rgba(225, 6, 0, 0.35)';
+    ctx.shadowColor = '#E10600';
+    ctx.shadowBlur = 15;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Dark Asphalt Track Base
+    drawSmoothPath();
+    ctx.lineWidth = 26;
+    ctx.strokeStyle = '#1F1F2C';
     ctx.stroke();
 
-    // Circuit Outer White Curb Lines
-    ctx.lineWidth = 32;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    // Center Dashed White Line
+    drawSmoothPath();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.setLineDash([8, 8]);
     ctx.stroke();
+    ctx.setLineDash([]); // Reset dash pattern
 
     // Glowing Inner Racing Line
+    drawSmoothPath();
     ctx.lineWidth = 4;
-    ctx.strokeStyle = this.safetyCarActive ? '#FFCC00' : 'rgba(225, 6, 0, 0.6)';
+    ctx.strokeStyle = this.safetyCarActive ? '#FFCC00' : 'rgba(225, 6, 0, 0.8)';
     ctx.stroke();
 
     // Start/Finish Line Ribbon
     const startPt = track.path[0];
     ctx.beginPath();
     ctx.arc(startPt.x * width, startPt.y * height, 16, 0, 2 * Math.PI);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
     ctx.fill();
 
     // 2. Draw Driver Physics Dots
