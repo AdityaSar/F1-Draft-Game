@@ -34,18 +34,23 @@ const F1Simulator = {
       name: 'Monaco - Circuit de Monaco',
       lengthKm: 3.337,
       baseLapTime: 72.0, // seconds
-      // Path waypoints (normalized 0 to 1)
+      // Exact normalized high-fidelity vector coordinates (scaled 0.0 to 1.0)
       path: [
-        { x: 0.15, y: 0.70, type: 'straight' },
-        { x: 0.25, y: 0.85, type: 'corner', speedFactor: 0.5 }, // Sainte Devote
-        { x: 0.45, y: 0.75, type: 'straight' },
-        { x: 0.65, y: 0.60, type: 'corner', speedFactor: 0.6 }, // Massenet
-        { x: 0.80, y: 0.45, type: 'corner', speedFactor: 0.5 }, // Casino Square
-        { x: 0.85, y: 0.25, type: 'corner', speedFactor: 0.3 }, // Mirabeau & Hairpin
-        { x: 0.65, y: 0.20, type: 'straight' }, // Portier & Tunnel
-        { x: 0.45, y: 0.30, type: 'corner', speedFactor: 0.5 }, // Nouvelle Chicane
-        { x: 0.30, y: 0.35, type: 'corner', speedFactor: 0.6 }, // Tabac
-        { x: 0.15, y: 0.50, type: 'corner', speedFactor: 0.4 }  // Swimming Pool & Rascasse
+        { x: 0.35, y: 0.28, type: 'straight' }, // Main straight
+        { x: 0.28, y: 0.18, type: 'corner', speedFactor: 0.4 }, // Sainte Devote
+        { x: 0.42, y: 0.22, type: 'straight' }, // Up the hill to Massenet
+        { x: 0.60, y: 0.25, type: 'corner', speedFactor: 0.55 }, // Casino Square
+        { x: 0.82, y: 0.32, type: 'corner', speedFactor: 0.45 }, // Mirabeau entry
+        { x: 0.88, y: 0.45, type: 'corner', speedFactor: 0.25 }, // Grand Hotel Hairpin loop
+        { x: 0.78, y: 0.40, type: 'corner', speedFactor: 0.4 }, // Hairpin exit
+        { x: 0.70, y: 0.48, type: 'straight' }, // Portier & Tunnel entry
+        { x: 0.52, y: 0.58, type: 'straight' }, // Tunnel exit
+        { x: 0.45, y: 0.68, type: 'corner', speedFactor: 0.45 }, // Chicane
+        { x: 0.38, y: 0.78, type: 'corner', speedFactor: 0.55 }, // Tabac & Swimming pool
+        { x: 0.32, y: 0.85, type: 'corner', speedFactor: 0.5 }, // Piscine section
+        { x: 0.24, y: 0.88, type: 'corner', speedFactor: 0.3 }, // La Rascasse
+        { x: 0.28, y: 0.75, type: 'corner', speedFactor: 0.45 }, // Antony Noghès
+        { x: 0.35, y: 0.28, type: 'straight' }  // Loop closed back to start
       ]
     },
     monza: {
@@ -460,22 +465,22 @@ const F1Simulator = {
     };
 
     // 1. Draw Organic Circuit Path Vector Map
-    // Outer Neon Red Glow Border
+    // Outer Border Accent: Sleek, uniform neon-red outer edge stroke (#E10600) with subtle glow
     drawSmoothPath();
-    ctx.lineWidth = 34;
-    ctx.strokeStyle = 'rgba(225, 6, 0, 0.35)';
+    ctx.lineWidth = 30;
+    ctx.strokeStyle = '#E10600';
     ctx.shadowColor = '#E10600';
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 12;
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Dark Asphalt Track Base
+    // Clean Dark Slate Gray Asphalt Base (#1A1A24)
     drawSmoothPath();
-    ctx.lineWidth = 26;
-    ctx.strokeStyle = '#1F1F2C';
+    ctx.lineWidth = 24;
+    ctx.strokeStyle = '#1A1A24';
     ctx.stroke();
 
-    // Center Dashed White Line
+    // Thin Elegant White Dashed Center Line (#FFFFFF)
     drawSmoothPath();
     ctx.lineWidth = 2;
     ctx.strokeStyle = '#FFFFFF';
@@ -483,10 +488,10 @@ const F1Simulator = {
     ctx.stroke();
     ctx.setLineDash([]); // Reset dash pattern
 
-    // Glowing Inner Racing Line
+    // Glowing Inner Racing Line (SC Indicator)
     drawSmoothPath();
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = this.safetyCarActive ? '#FFCC00' : 'rgba(225, 6, 0, 0.8)';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = this.safetyCarActive ? '#FFCC00' : 'rgba(225, 6, 0, 0.5)';
     ctx.stroke();
 
     // Start/Finish Line Ribbon
@@ -736,52 +741,45 @@ const F1Simulator = {
       driverTbody.appendChild(tr);
     });
 
-    // Show Victory Modal & Trigger Kahoot-Style Cinematic Spotlight & Podium Reveal Sequence
+    // Show Victory Modal & Trigger Sequential Podium Reveal Sequence:
+    // PHASE 1 (Base Podium Reveal): P3 and P2 pillars immediately rise up and lock into position with name tags & scores. P1 remains hidden.
+    // PHASE 2 (Spotlight Search & Sweep): Volumetric spotlight activates and sweeps horizontally across stage (over P2 and P3).
+    // PHASE 3 (P1 Champion Lock-In & Reveal): Spotlight locks dead-center onto P1 with lightFlash pulse, P1 champion pillar rises, revealing champion name, total score, trophy, and launching particle confetti.
     document.getElementById('results-modal').classList.remove('hidden');
 
-    // Reset initial animation classes for podium blocks & driver info cards
+    // Reset initial animation classes
     document.querySelectorAll('.podium-block').forEach(b => b.classList.remove('raised'));
     document.querySelectorAll('.podium-driver-info').forEach(i => i.classList.remove('revealed'));
 
-    const spotlight = document.getElementById('podium-spotlight');
-    spotlight.className = 'spotlight-beam active-sweep';
+    // PHASE 1: Immediately raise P3 & P2 pillars and reveal name cards
+    const p3Block = document.querySelector('.p3-block');
+    const p3Info = document.querySelector('#podium-slot-p3 .podium-driver-info');
+    const p2Block = document.querySelector('.p2-block');
+    const p2Info = document.querySelector('#podium-slot-p2 .podium-driver-info');
 
-    // Timeline Sequence for Kahoot-style Reveal:
-    // 1. Spotlight sweeps across stage for 3.2s
-    // 2. Lock spotlight onto P1 with lightFlash pulse
-    // 3. Raise P3, then P2, then P1 blocks sequentially
-    // 4. Reveal player names & trigger confetti on P1 lockdown
+    if (p3Block) p3Block.classList.add('raised');
+    if (p3Info) p3Info.classList.add('revealed');
+    if (p2Block) p2Block.classList.add('raised');
+    if (p2Info) p2Info.classList.add('revealed');
+
+    // PHASE 2: Activate volumetric spotlight beam sweep over P2 & P3 (starts after 300ms delay)
+    const spotlight = document.getElementById('podium-spotlight');
+    setTimeout(() => {
+      spotlight.className = 'spotlight-beam active-sweep';
+    }, 300);
+
+    // PHASE 3: After spotlight sweep (3.5s), lock dead-center onto P1, raise P1 pillar, reveal champion & launch confetti
     setTimeout(() => {
       spotlight.className = 'spotlight-beam locked-p1';
 
-      // Raise P3 block (3rd place)
-      setTimeout(() => {
-        const p3Block = document.querySelector('.p3-block');
-        const p3Info = document.querySelector('#podium-slot-p3 .podium-driver-info');
-        if (p3Block) p3Block.classList.add('raised');
-        if (p3Info) p3Info.classList.add('revealed');
-      }, 200);
+      const p1Block = document.querySelector('.p1-block');
+      const p1Info = document.querySelector('#podium-slot-p1 .podium-driver-info');
+      if (p1Block) p1Block.classList.add('raised');
+      if (p1Info) p1Info.classList.add('revealed');
 
-      // Raise P2 block (2nd place)
-      setTimeout(() => {
-        const p2Block = document.querySelector('.p2-block');
-        const p2Info = document.querySelector('#podium-slot-p2 .podium-driver-info');
-        if (p2Block) p2Block.classList.add('raised');
-        if (p2Info) p2Info.classList.add('revealed');
-      }, 600);
-
-      // Raise P1 Champion block (1st place), reveal champion & launch confetti
-      setTimeout(() => {
-        const p1Block = document.querySelector('.p1-block');
-        const p1Info = document.querySelector('#podium-slot-p1 .podium-driver-info');
-        if (p1Block) p1Block.classList.add('raised');
-        if (p1Info) p1Info.classList.add('revealed');
-
-        // Trigger Confetti Burst
-        this.launchConfetti();
-      }, 1000);
-
-    }, 3200);
+      // Instantly launch confetti particle burst
+      this.launchConfetti();
+    }, 3800);
   },
 
   launchConfetti() {
