@@ -28,103 +28,120 @@ const F1Simulator = {
   // F1 Championship Points Scale
   pointsScale: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
 
-  // Track Circuit Vector Geometry Definitions
+  // Track Circuit Vector Geometry Definitions & Realistic DRS Zones
   tracks: {
     monaco: {
       name: 'Monaco - Circuit de Monaco',
       lengthKm: 3.337,
-      baseLapTime: 72.0, // seconds
-      // Exact normalized high-fidelity vector coordinates (scaled 0.0 to 1.0)
+      baseLapTime: 72.0,
+      drsZones: [{ start: 0.88, end: 0.08, label: 'DRS ZONE 1' }],
       path: [
-        { x: 0.35, y: 0.28, type: 'straight' }, // Main straight
-        { x: 0.28, y: 0.18, type: 'corner', speedFactor: 0.4 }, // Sainte Devote
-        { x: 0.42, y: 0.22, type: 'straight' }, // Up the hill to Massenet
-        { x: 0.60, y: 0.25, type: 'corner', speedFactor: 0.55 }, // Casino Square
-        { x: 0.82, y: 0.32, type: 'corner', speedFactor: 0.45 }, // Mirabeau entry
-        { x: 0.88, y: 0.45, type: 'corner', speedFactor: 0.25 }, // Grand Hotel Hairpin loop
-        { x: 0.78, y: 0.40, type: 'corner', speedFactor: 0.4 }, // Hairpin exit
-        { x: 0.70, y: 0.48, type: 'straight' }, // Portier & Tunnel entry
-        { x: 0.52, y: 0.58, type: 'straight' }, // Tunnel exit
-        { x: 0.45, y: 0.68, type: 'corner', speedFactor: 0.45 }, // Chicane
-        { x: 0.38, y: 0.78, type: 'corner', speedFactor: 0.55 }, // Tabac & Swimming pool
-        { x: 0.32, y: 0.85, type: 'corner', speedFactor: 0.5 }, // Piscine section
-        { x: 0.24, y: 0.88, type: 'corner', speedFactor: 0.3 }, // La Rascasse
-        { x: 0.28, y: 0.75, type: 'corner', speedFactor: 0.45 }, // Antony Noghès
-        { x: 0.35, y: 0.28, type: 'straight' }  // Loop closed back to start
+        { x: 0.35, y: 0.28, type: 'straight' },
+        { x: 0.28, y: 0.18, type: 'corner', speedFactor: 0.4 },
+        { x: 0.42, y: 0.22, type: 'straight' },
+        { x: 0.60, y: 0.25, type: 'corner', speedFactor: 0.55 },
+        { x: 0.82, y: 0.32, type: 'corner', speedFactor: 0.45 },
+        { x: 0.88, y: 0.45, type: 'corner', speedFactor: 0.25 },
+        { x: 0.78, y: 0.40, type: 'corner', speedFactor: 0.4 },
+        { x: 0.70, y: 0.48, type: 'straight' },
+        { x: 0.52, y: 0.58, type: 'straight' },
+        { x: 0.45, y: 0.68, type: 'corner', speedFactor: 0.45 },
+        { x: 0.38, y: 0.78, type: 'corner', speedFactor: 0.55 },
+        { x: 0.32, y: 0.85, type: 'corner', speedFactor: 0.5 },
+        { x: 0.24, y: 0.88, type: 'corner', speedFactor: 0.3 },
+        { x: 0.28, y: 0.75, type: 'corner', speedFactor: 0.45 },
+        { x: 0.35, y: 0.28, type: 'straight' }
       ]
     },
     monza: {
       name: 'Monza - Temple of Speed',
       lengthKm: 5.793,
       baseLapTime: 81.0,
+      drsZones: [
+        { start: 0.85, end: 0.12, label: 'DRS ZONE 1' },
+        { start: 0.35, end: 0.55, label: 'DRS ZONE 2' }
+      ],
       path: [
-        { x: 0.10, y: 0.75, type: 'straight' }, // Main Straight
-        { x: 0.80, y: 0.75, type: 'corner', speedFactor: 0.45 }, // Variante del Rettifilo
-        { x: 0.85, y: 0.50, type: 'straight' }, // Curva Grande
-        { x: 0.80, y: 0.25, type: 'corner', speedFactor: 0.5 }, // Variante della Roggia
-        { x: 0.50, y: 0.20, type: 'straight' }, // Lesmos
-        { x: 0.20, y: 0.25, type: 'corner', speedFactor: 0.55 }, // Variante Ascari
-        { x: 0.10, y: 0.50, type: 'corner', speedFactor: 0.65 }  // Curva Parabolica
+        { x: 0.10, y: 0.75, type: 'straight' },
+        { x: 0.80, y: 0.75, type: 'corner', speedFactor: 0.45 },
+        { x: 0.85, y: 0.50, type: 'straight' },
+        { x: 0.80, y: 0.25, type: 'corner', speedFactor: 0.5 },
+        { x: 0.50, y: 0.20, type: 'straight' },
+        { x: 0.20, y: 0.25, type: 'corner', speedFactor: 0.55 },
+        { x: 0.10, y: 0.50, type: 'corner', speedFactor: 0.65 }
       ]
     },
     spa: {
       name: 'Spa - Francorchamps',
       lengthKm: 7.004,
       baseLapTime: 104.0,
+      drsZones: [
+        { start: 0.25, end: 0.48, label: 'KEMMEL DRS' },
+        { start: 0.82, end: 0.08, label: 'PIT DRS' }
+      ],
       path: [
         { x: 0.15, y: 0.80, type: 'straight' },
-        { x: 0.30, y: 0.85, type: 'corner', speedFactor: 0.4 }, // La Source
-        { x: 0.55, y: 0.70, type: 'straight' }, // Eau Rouge & Raidillon
-        { x: 0.85, y: 0.50, type: 'straight' }, // Kemmel Straight
-        { x: 0.80, y: 0.20, type: 'corner', speedFactor: 0.5 }, // Les Combes
-        { x: 0.50, y: 0.15, type: 'corner', speedFactor: 0.6 }, // Bruxelles & Pouhon
-        { x: 0.20, y: 0.30, type: 'straight' }, // Stavelot & Blanchimont
-        { x: 0.10, y: 0.60, type: 'corner', speedFactor: 0.35 } // Bus Stop Chicane
+        { x: 0.30, y: 0.85, type: 'corner', speedFactor: 0.4 },
+        { x: 0.55, y: 0.70, type: 'straight' },
+        { x: 0.85, y: 0.50, type: 'straight' },
+        { x: 0.80, y: 0.20, type: 'corner', speedFactor: 0.5 },
+        { x: 0.50, y: 0.15, type: 'corner', speedFactor: 0.6 },
+        { x: 0.20, y: 0.30, type: 'straight' },
+        { x: 0.10, y: 0.60, type: 'corner', speedFactor: 0.35 }
       ]
     },
     silverstone: {
       name: 'Silverstone - GP Circuit',
       lengthKm: 5.891,
       baseLapTime: 87.0,
+      drsZones: [
+        { start: 0.25, end: 0.40, label: 'WELLINGTON DRS' },
+        { start: 0.65, end: 0.80, label: 'HANGAR DRS' }
+      ],
       path: [
-        { x: 0.15, y: 0.70, type: 'straight' }, // Hamilton Straight
-        { x: 0.35, y: 0.80, type: 'corner', speedFactor: 0.6 }, // Abbey & Farm
-        { x: 0.60, y: 0.75, type: 'straight' }, // Wellington Straight
-        { x: 0.85, y: 0.60, type: 'corner', speedFactor: 0.5 }, // Luffield & Copse
-        { x: 0.80, y: 0.30, type: 'corner', speedFactor: 0.7 }, // Maggotts & Becketts
-        { x: 0.50, y: 0.20, type: 'straight' }, // Hangar Straight
-        { x: 0.20, y: 0.30, type: 'corner', speedFactor: 0.55 }, // Stowe & Vale
-        { x: 0.10, y: 0.50, type: 'corner', speedFactor: 0.45 }  // Club
+        { x: 0.15, y: 0.70, type: 'straight' },
+        { x: 0.35, y: 0.80, type: 'corner', speedFactor: 0.6 },
+        { x: 0.60, y: 0.75, type: 'straight' },
+        { x: 0.85, y: 0.60, type: 'corner', speedFactor: 0.5 },
+        { x: 0.80, y: 0.30, type: 'corner', speedFactor: 0.7 },
+        { x: 0.50, y: 0.20, type: 'straight' },
+        { x: 0.20, y: 0.30, type: 'corner', speedFactor: 0.55 },
+        { x: 0.10, y: 0.50, type: 'corner', speedFactor: 0.45 }
       ]
     },
     suzuka: {
       name: 'Suzuka - International Racing Course',
       lengthKm: 5.807,
       baseLapTime: 89.0,
+      drsZones: [{ start: 0.85, end: 0.12, label: 'DRS ZONE 1' }],
       path: [
-        { x: 0.15, y: 0.75, type: 'straight' }, // Main Straight
-        { x: 0.35, y: 0.85, type: 'corner', speedFactor: 0.6 }, // First Corner & S Curves
-        { x: 0.60, y: 0.70, type: 'corner', speedFactor: 0.5 }, // Dunlop & Degner
-        { x: 0.80, y: 0.50, type: 'straight' }, // Under Crossover Bridge
-        { x: 0.75, y: 0.25, type: 'corner', speedFactor: 0.4 }, // Hairpin
-        { x: 0.45, y: 0.20, type: 'straight' }, // 200R
-        { x: 0.25, y: 0.35, type: 'corner', speedFactor: 0.65 }, // Spoon Curve
-        { x: 0.40, y: 0.55, type: 'straight' }, // Back Straight / Over Bridge Crossover
-        { x: 0.10, y: 0.60, type: 'corner', speedFactor: 0.35 }  // 130R & Casio Triangle
+        { x: 0.15, y: 0.75, type: 'straight' },
+        { x: 0.35, y: 0.85, type: 'corner', speedFactor: 0.6 },
+        { x: 0.60, y: 0.70, type: 'corner', speedFactor: 0.5 },
+        { x: 0.80, y: 0.50, type: 'straight' },
+        { x: 0.75, y: 0.25, type: 'corner', speedFactor: 0.4 },
+        { x: 0.45, y: 0.20, type: 'straight' },
+        { x: 0.25, y: 0.35, type: 'corner', speedFactor: 0.65 },
+        { x: 0.40, y: 0.55, type: 'straight' },
+        { x: 0.10, y: 0.60, type: 'corner', speedFactor: 0.35 }
       ]
     },
     interlagos: {
       name: 'Interlagos - Autódromo José Carlos Pace',
       lengthKm: 4.309,
       baseLapTime: 70.5,
+      drsZones: [
+        { start: 0.85, end: 0.15, label: 'MAIN DRS' },
+        { start: 0.20, end: 0.40, label: 'RETA OPOSTA DRS' }
+      ],
       path: [
-        { x: 0.20, y: 0.75, type: 'straight' }, // Reta Oposta
-        { x: 0.40, y: 0.85, type: 'corner', speedFactor: 0.45 }, // Senna S
-        { x: 0.75, y: 0.70, type: 'straight' }, // Curva do Sol
-        { x: 0.85, y: 0.45, type: 'corner', speedFactor: 0.5 }, // Descida do Lago
-        { x: 0.65, y: 0.20, type: 'corner', speedFactor: 0.4 }, // Ferradura & Pinheirinho
-        { x: 0.35, y: 0.25, type: 'corner', speedFactor: 0.5 }, // Bico de Pato
-        { x: 0.15, y: 0.45, type: 'straight' }  // Junção & Subida dos Boxes
+        { x: 0.20, y: 0.75, type: 'straight' },
+        { x: 0.40, y: 0.85, type: 'corner', speedFactor: 0.45 },
+        { x: 0.75, y: 0.70, type: 'straight' },
+        { x: 0.85, y: 0.45, type: 'corner', speedFactor: 0.5 },
+        { x: 0.65, y: 0.20, type: 'corner', speedFactor: 0.4 },
+        { x: 0.35, y: 0.25, type: 'corner', speedFactor: 0.5 },
+        { x: 0.15, y: 0.45, type: 'straight' }
       ]
     }
   },
