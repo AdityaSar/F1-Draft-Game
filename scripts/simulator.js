@@ -28,120 +28,103 @@ const F1Simulator = {
   // F1 Championship Points Scale
   pointsScale: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
 
-  // Track Circuit Vector Geometry Definitions & Realistic DRS Zones
+  // Track Circuit Vector Geometry Definitions
   tracks: {
     monaco: {
       name: 'Monaco - Circuit de Monaco',
       lengthKm: 3.337,
-      baseLapTime: 72.0,
-      drsZones: [{ start: 0.88, end: 0.08, label: 'DRS ZONE 1' }],
+      baseLapTime: 72.0, // seconds
+      // Exact normalized high-fidelity vector coordinates (scaled 0.0 to 1.0)
       path: [
-        { x: 0.35, y: 0.28, type: 'straight' },
-        { x: 0.28, y: 0.18, type: 'corner', speedFactor: 0.4 },
-        { x: 0.42, y: 0.22, type: 'straight' },
-        { x: 0.60, y: 0.25, type: 'corner', speedFactor: 0.55 },
-        { x: 0.82, y: 0.32, type: 'corner', speedFactor: 0.45 },
-        { x: 0.88, y: 0.45, type: 'corner', speedFactor: 0.25 },
-        { x: 0.78, y: 0.40, type: 'corner', speedFactor: 0.4 },
-        { x: 0.70, y: 0.48, type: 'straight' },
-        { x: 0.52, y: 0.58, type: 'straight' },
-        { x: 0.45, y: 0.68, type: 'corner', speedFactor: 0.45 },
-        { x: 0.38, y: 0.78, type: 'corner', speedFactor: 0.55 },
-        { x: 0.32, y: 0.85, type: 'corner', speedFactor: 0.5 },
-        { x: 0.24, y: 0.88, type: 'corner', speedFactor: 0.3 },
-        { x: 0.28, y: 0.75, type: 'corner', speedFactor: 0.45 },
-        { x: 0.35, y: 0.28, type: 'straight' }
+        { x: 0.35, y: 0.28, type: 'straight' }, // Main straight
+        { x: 0.28, y: 0.18, type: 'corner', speedFactor: 0.4 }, // Sainte Devote
+        { x: 0.42, y: 0.22, type: 'straight' }, // Up the hill to Massenet
+        { x: 0.60, y: 0.25, type: 'corner', speedFactor: 0.55 }, // Casino Square
+        { x: 0.82, y: 0.32, type: 'corner', speedFactor: 0.45 }, // Mirabeau entry
+        { x: 0.88, y: 0.45, type: 'corner', speedFactor: 0.25 }, // Grand Hotel Hairpin loop
+        { x: 0.78, y: 0.40, type: 'corner', speedFactor: 0.4 }, // Hairpin exit
+        { x: 0.70, y: 0.48, type: 'straight' }, // Portier & Tunnel entry
+        { x: 0.52, y: 0.58, type: 'straight' }, // Tunnel exit
+        { x: 0.45, y: 0.68, type: 'corner', speedFactor: 0.45 }, // Chicane
+        { x: 0.38, y: 0.78, type: 'corner', speedFactor: 0.55 }, // Tabac & Swimming pool
+        { x: 0.32, y: 0.85, type: 'corner', speedFactor: 0.5 }, // Piscine section
+        { x: 0.24, y: 0.88, type: 'corner', speedFactor: 0.3 }, // La Rascasse
+        { x: 0.28, y: 0.75, type: 'corner', speedFactor: 0.45 }, // Antony Noghès
+        { x: 0.35, y: 0.28, type: 'straight' }  // Loop closed back to start
       ]
     },
     monza: {
       name: 'Monza - Temple of Speed',
       lengthKm: 5.793,
       baseLapTime: 81.0,
-      drsZones: [
-        { start: 0.85, end: 0.12, label: 'DRS ZONE 1' },
-        { start: 0.35, end: 0.55, label: 'DRS ZONE 2' }
-      ],
       path: [
-        { x: 0.10, y: 0.75, type: 'straight' },
-        { x: 0.80, y: 0.75, type: 'corner', speedFactor: 0.45 },
-        { x: 0.85, y: 0.50, type: 'straight' },
-        { x: 0.80, y: 0.25, type: 'corner', speedFactor: 0.5 },
-        { x: 0.50, y: 0.20, type: 'straight' },
-        { x: 0.20, y: 0.25, type: 'corner', speedFactor: 0.55 },
-        { x: 0.10, y: 0.50, type: 'corner', speedFactor: 0.65 }
+        { x: 0.10, y: 0.75, type: 'straight' }, // Main Straight
+        { x: 0.80, y: 0.75, type: 'corner', speedFactor: 0.45 }, // Variante del Rettifilo
+        { x: 0.85, y: 0.50, type: 'straight' }, // Curva Grande
+        { x: 0.80, y: 0.25, type: 'corner', speedFactor: 0.5 }, // Variante della Roggia
+        { x: 0.50, y: 0.20, type: 'straight' }, // Lesmos
+        { x: 0.20, y: 0.25, type: 'corner', speedFactor: 0.55 }, // Variante Ascari
+        { x: 0.10, y: 0.50, type: 'corner', speedFactor: 0.65 }  // Curva Parabolica
       ]
     },
     spa: {
       name: 'Spa - Francorchamps',
       lengthKm: 7.004,
       baseLapTime: 104.0,
-      drsZones: [
-        { start: 0.25, end: 0.48, label: 'KEMMEL DRS' },
-        { start: 0.82, end: 0.08, label: 'PIT DRS' }
-      ],
       path: [
         { x: 0.15, y: 0.80, type: 'straight' },
-        { x: 0.30, y: 0.85, type: 'corner', speedFactor: 0.4 },
-        { x: 0.55, y: 0.70, type: 'straight' },
-        { x: 0.85, y: 0.50, type: 'straight' },
-        { x: 0.80, y: 0.20, type: 'corner', speedFactor: 0.5 },
-        { x: 0.50, y: 0.15, type: 'corner', speedFactor: 0.6 },
-        { x: 0.20, y: 0.30, type: 'straight' },
-        { x: 0.10, y: 0.60, type: 'corner', speedFactor: 0.35 }
+        { x: 0.30, y: 0.85, type: 'corner', speedFactor: 0.4 }, // La Source
+        { x: 0.55, y: 0.70, type: 'straight' }, // Eau Rouge & Raidillon
+        { x: 0.85, y: 0.50, type: 'straight' }, // Kemmel Straight
+        { x: 0.80, y: 0.20, type: 'corner', speedFactor: 0.5 }, // Les Combes
+        { x: 0.50, y: 0.15, type: 'corner', speedFactor: 0.6 }, // Bruxelles & Pouhon
+        { x: 0.20, y: 0.30, type: 'straight' }, // Stavelot & Blanchimont
+        { x: 0.10, y: 0.60, type: 'corner', speedFactor: 0.35 } // Bus Stop Chicane
       ]
     },
     silverstone: {
       name: 'Silverstone - GP Circuit',
       lengthKm: 5.891,
       baseLapTime: 87.0,
-      drsZones: [
-        { start: 0.25, end: 0.40, label: 'WELLINGTON DRS' },
-        { start: 0.65, end: 0.80, label: 'HANGAR DRS' }
-      ],
       path: [
-        { x: 0.15, y: 0.70, type: 'straight' },
-        { x: 0.35, y: 0.80, type: 'corner', speedFactor: 0.6 },
-        { x: 0.60, y: 0.75, type: 'straight' },
-        { x: 0.85, y: 0.60, type: 'corner', speedFactor: 0.5 },
-        { x: 0.80, y: 0.30, type: 'corner', speedFactor: 0.7 },
-        { x: 0.50, y: 0.20, type: 'straight' },
-        { x: 0.20, y: 0.30, type: 'corner', speedFactor: 0.55 },
-        { x: 0.10, y: 0.50, type: 'corner', speedFactor: 0.45 }
+        { x: 0.15, y: 0.70, type: 'straight' }, // Hamilton Straight
+        { x: 0.35, y: 0.80, type: 'corner', speedFactor: 0.6 }, // Abbey & Farm
+        { x: 0.60, y: 0.75, type: 'straight' }, // Wellington Straight
+        { x: 0.85, y: 0.60, type: 'corner', speedFactor: 0.5 }, // Luffield & Copse
+        { x: 0.80, y: 0.30, type: 'corner', speedFactor: 0.7 }, // Maggotts & Becketts
+        { x: 0.50, y: 0.20, type: 'straight' }, // Hangar Straight
+        { x: 0.20, y: 0.30, type: 'corner', speedFactor: 0.55 }, // Stowe & Vale
+        { x: 0.10, y: 0.50, type: 'corner', speedFactor: 0.45 }  // Club
       ]
     },
     suzuka: {
       name: 'Suzuka - International Racing Course',
       lengthKm: 5.807,
       baseLapTime: 89.0,
-      drsZones: [{ start: 0.85, end: 0.12, label: 'DRS ZONE 1' }],
       path: [
-        { x: 0.15, y: 0.75, type: 'straight' },
-        { x: 0.35, y: 0.85, type: 'corner', speedFactor: 0.6 },
-        { x: 0.60, y: 0.70, type: 'corner', speedFactor: 0.5 },
-        { x: 0.80, y: 0.50, type: 'straight' },
-        { x: 0.75, y: 0.25, type: 'corner', speedFactor: 0.4 },
-        { x: 0.45, y: 0.20, type: 'straight' },
-        { x: 0.25, y: 0.35, type: 'corner', speedFactor: 0.65 },
-        { x: 0.40, y: 0.55, type: 'straight' },
-        { x: 0.10, y: 0.60, type: 'corner', speedFactor: 0.35 }
+        { x: 0.15, y: 0.75, type: 'straight' }, // Main Straight
+        { x: 0.35, y: 0.85, type: 'corner', speedFactor: 0.6 }, // First Corner & S Curves
+        { x: 0.60, y: 0.70, type: 'corner', speedFactor: 0.5 }, // Dunlop & Degner
+        { x: 0.80, y: 0.50, type: 'straight' }, // Under Crossover Bridge
+        { x: 0.75, y: 0.25, type: 'corner', speedFactor: 0.4 }, // Hairpin
+        { x: 0.45, y: 0.20, type: 'straight' }, // 200R
+        { x: 0.25, y: 0.35, type: 'corner', speedFactor: 0.65 }, // Spoon Curve
+        { x: 0.40, y: 0.55, type: 'straight' }, // Back Straight / Over Bridge Crossover
+        { x: 0.10, y: 0.60, type: 'corner', speedFactor: 0.35 }  // 130R & Casio Triangle
       ]
     },
     interlagos: {
       name: 'Interlagos - Autódromo José Carlos Pace',
       lengthKm: 4.309,
       baseLapTime: 70.5,
-      drsZones: [
-        { start: 0.85, end: 0.15, label: 'MAIN DRS' },
-        { start: 0.20, end: 0.40, label: 'RETA OPOSTA DRS' }
-      ],
       path: [
-        { x: 0.20, y: 0.75, type: 'straight' },
-        { x: 0.40, y: 0.85, type: 'corner', speedFactor: 0.45 },
-        { x: 0.75, y: 0.70, type: 'straight' },
-        { x: 0.85, y: 0.45, type: 'corner', speedFactor: 0.5 },
-        { x: 0.65, y: 0.20, type: 'corner', speedFactor: 0.4 },
-        { x: 0.35, y: 0.25, type: 'corner', speedFactor: 0.5 },
-        { x: 0.15, y: 0.45, type: 'straight' }
+        { x: 0.20, y: 0.75, type: 'straight' }, // Reta Oposta
+        { x: 0.40, y: 0.85, type: 'corner', speedFactor: 0.45 }, // Senna S
+        { x: 0.75, y: 0.70, type: 'straight' }, // Curva do Sol
+        { x: 0.85, y: 0.45, type: 'corner', speedFactor: 0.5 }, // Descida do Lago
+        { x: 0.65, y: 0.20, type: 'corner', speedFactor: 0.4 }, // Ferradura & Pinheirinho
+        { x: 0.35, y: 0.25, type: 'corner', speedFactor: 0.5 }, // Bico de Pato
+        { x: 0.15, y: 0.45, type: 'straight' }  // Junção & Subida dos Boxes
       ]
     }
   },
@@ -176,11 +159,6 @@ const F1Simulator = {
       document.getElementById('telemetry-weather-indicator').textContent = this.weather === 'wet' ? '🌧️ WET' : '☀️ DRY';
     });
 
-    const qualyBtn = document.getElementById('qualifying-btn');
-    if (qualyBtn) {
-      qualyBtn.onclick = () => this.runQualifyingSession();
-    }
-
     document.getElementById('btn-sim-play').onclick = () => this.play();
     document.getElementById('btn-sim-pause').onclick = () => this.pause();
 
@@ -202,50 +180,6 @@ const F1Simulator = {
     this.renderFrame();
   },
 
-  runQualifyingSession() {
-    if (this.isPlaying) this.pause();
-
-    const qualyBtn = document.getElementById('qualifying-btn');
-    if (qualyBtn) qualyBtn.style.display = 'none';
-
-    this.logCommentary('⏱️ QUALIFYING SESSION STARTED! Cars taking to the track for 1-lap flying qualifying...', 'system');
-
-    // Run 1-lap flying qualifying animation (simSpeed = 5x)
-    let animProgress = 0;
-    const animateQualy = () => {
-      animProgress += 0.02;
-      this.cars.forEach((car, idx) => {
-        car.progress = (animProgress + (idx * 0.01)) % 1.0;
-      });
-      this.renderFrame();
-
-      if (animProgress < 1.0) {
-        requestAnimationFrame(animateQualy);
-      } else {
-        // Compute individual qualifying lap times (70s - 78s)
-        this.cars.forEach(car => {
-          const tier = this.getDriverTierParams(car.skill);
-          car.qualyTime = 70.0 + (100 - car.skill) * 0.22 + (Math.random() * 0.6 - 0.3);
-        });
-
-        // Sort cars strictly by qualifying time
-        this.cars.sort((a, b) => a.qualyTime - b.qualyTime);
-
-        // Assign grid positions & staggered 2-column F1 starting grid formation
-        this.cars.forEach((car, index) => {
-          car.gridPos = index + 1;
-          car.progress = Math.max(0, 0.06 - index * 0.007);
-        });
-
-        const pole = this.cars[0];
-        this.logCommentary(`🏁 QUALIFYING COMPLETE! Pole Position: ${pole.driverName} (${pole.playerName}) with ${pole.qualyTime.toFixed(3)}s!`, 'system');
-        this.renderFrame();
-      }
-    };
-
-    requestAnimationFrame(animateQualy);
-  },
-
   buildDraftedCarsList() {
     this.cars = [];
     let carId = 1;
@@ -253,8 +187,11 @@ const F1Simulator = {
     // Collect all drafted drivers across all players using custom normalized driver skill ratings
     F1App.state.players.forEach(player => {
       player.roster.forEach(item => {
+        // Look up skill from global driverMap or item object fallback
         const driverData = F1App.state.driverMap[item.name];
         const driverSkill = item.skill || (driverData ? driverData.skill : 82);
+
+        // Qualifying time formula strictly reflects driver skill rating + slight random variance
         const qualyTime = (100 - driverSkill) + (Math.random() * 1.5 - 0.75);
 
         this.cars.push({
@@ -264,7 +201,8 @@ const F1Simulator = {
           color: player.color,
           skill: driverSkill,
           qualyTime: qualyTime,
-          progress: 0,
+          // Telemetry
+          progress: 0, // 0 to 1 along circuit
           lap: 1,
           isDNF: false,
           dnfReason: null,
@@ -278,7 +216,7 @@ const F1Simulator = {
     // Sort grid by qualifying lap times
     this.cars.sort((a, b) => a.qualyTime - b.qualyTime);
 
-    // Position staggered 2-column grid along main straight
+    // Give slight staggered start progress based on grid position
     this.cars.forEach((car, index) => {
       car.gridPos = index + 1;
       car.progress = Math.max(0, 0.05 - index * 0.008);
@@ -332,86 +270,35 @@ const F1Simulator = {
     this.animationFrameId = requestAnimationFrame(() => this.loop());
   },
 
-  getDriverTierParams(skill) {
-    if (skill >= 90) { // Tier 1
-      return { paceMult: 1.15, lapVariance: 0.10, lockUpChance: 0.015, dnfChance: 0.005 };
-    } else if (skill >= 80) { // Tier 2
-      return { paceMult: 1.07, lapVariance: 0.20, lockUpChance: 0.020, dnfChance: 0.010 };
-    } else if (skill >= 70) { // Tier 3
-      return { paceMult: 0.98, lapVariance: 0.38, lockUpChance: 0.040, dnfChance: 0.018 };
-    } else { // Tier 4 (< 70)
-      return { paceMult: 0.90, lapVariance: 0.60, lockUpChance: 0.055, dnfChance: 0.025 };
-    }
-  },
-
   updatePhysics() {
     const track = this.tracks[this.trackKey];
+    // Base speed increment per frame
     const baseSpeed = (1 / (track.baseLapTime * 60)) * this.simSpeed;
-
-    // Check Mid-Race Automated Rain Chance (Lap 8-12)
-    if (this.currentLap >= 8 && this.currentLap <= 12 && !this.rainTriggered && Math.random() < 0.002) {
-      this.rainTriggered = true;
-      this.weather = 'wet';
-      document.getElementById('sim-weather-select').value = 'wet';
-      document.getElementById('telemetry-weather-indicator').textContent = '🌧️ WET';
-      this.logCommentary('🌧️ RAIN STARTED! Automated pit stops triggered for wet tyres!', 'system');
-
-      // Trigger variable pit stop durations (Fast 10%: 2s, Standard 80%: 2.6s, Slow 10%: 4.8s)
-      this.cars.forEach(car => {
-        if (!car.isDNF) {
-          car.isPitStopping = true;
-          const pitRoll = Math.random();
-          let pitDuration = 2600; // Standard 2.6s
-          let pitType = 'STANDARD';
-
-          if (pitRoll < 0.10) {
-            pitDuration = 2000; // Fast 2.0s
-            pitType = 'FAST';
-          } else if (pitRoll > 0.90) {
-            pitDuration = 4800; // Slow 4.8s
-            pitType = 'SLOW';
-            this.logCommentary(`⚠️ SLOW PIT STOP FOR ${car.driverName}! Sticky wheel nut costs ${car.playerName} 4.8s!`, 'incident');
-          }
-
-          car.pitTimerText = `${(pitDuration / 1000).toFixed(1)}s (${pitType})`;
-          car.tireHaloColor = '#00F0FF'; // Blue Wets
-
-          setTimeout(() => {
-            car.isPitStopping = false;
-            car.pitTimerText = null;
-          }, pitDuration / this.simSpeed);
-        }
-      });
-    }
 
     // Process each car
     this.cars.forEach((car) => {
       if (car.isDNF) return;
 
-      if (car.isPitStopping) {
-        return; // Hold car in pit lane
-      }
-
-      const tier = this.getDriverTierParams(car.skill);
-
-      // Handle lock-up penalty timer
-      if (car.lockUpTimer && car.lockUpTimer > 0) {
-        car.lockUpTimer -= 1;
-      }
-
       // Calculate current position segment speed multiplier
       const waypoint = this.getSegmentWaypoint(car.progress, track);
       let speedMult = waypoint.speedFactor || 1.0;
 
-      // Tyre Wear degradation
-      const tireWear = Math.max(0.80, 1.0 - (car.lap / this.totalLaps) * 0.12);
-      speedMult *= tireWear;
-
       // Track-Specific Physics Modifiers
       if (this.trackKey === 'monaco') {
-        speedMult *= 0.80;
-      } else if (this.trackKey === 'monza' && waypoint.type === 'straight') {
-        speedMult *= 1.25;
+        speedMult *= 0.80; // Monaco: -20% speed
+      } else if (this.trackKey === 'monza') {
+        if (waypoint.type === 'straight') {
+          speedMult *= 1.25; // Monza: +25% top speed on straights
+        }
+      } else if (this.trackKey === 'silverstone') {
+        // Silverstone: High tire wear modifier (progressively slows speed over race duration)
+        const tireWearFactor = Math.max(0.85, 1.0 - (car.lap / this.totalLaps) * 0.15);
+        speedMult *= tireWearFactor;
+      } else if (this.trackKey === 'suzuka') {
+        // Suzuka: +15% performance boost in Sector 1 (S-Curves) for higher skill drivers (>= 80)
+        if (car.progress <= 0.35 && car.skill >= 80) {
+          speedMult *= 1.15;
+        }
       }
 
       // Weather penalty
@@ -419,48 +306,42 @@ const F1Simulator = {
         speedMult *= 0.85;
       }
 
-      // Lock-Up penalty (1-2s speed drop)
-      if (car.lockUpTimer && car.lockUpTimer > 0) {
-        speedMult *= 0.55;
-      }
-
-      // Safety car restriction & field compression
+      // Safety car restriction
       if (this.safetyCarActive) {
         speedMult = Math.min(speedMult, 0.4);
       }
 
-      // Driver Skill tier pace influence
-      const skillMult = tier.paceMult;
+      // Skill influence (+/- 15%)
+      const skillMult = 0.85 + (car.skill / 100) * 0.3;
 
       // Advance car progress
       const frameProgress = baseSpeed * speedMult * skillMult;
       car.progress += frameProgress;
 
-      // Check Lap Completion & Random Incidents
+      // Check Lap Completion
       if (car.progress >= 1.0) {
         car.progress -= 1.0;
         car.lap += 1;
 
-        // Calculate lap time with tier-specific consistency variance
-        const variance = (Math.random() * 2 - 1) * tier.lapVariance;
-        const lapTimeSec = track.baseLapTime * (1 / skillMult) + variance;
+        // Calculate lap time
+        const lapTimeSec = track.baseLapTime * (1 / skillMult) + (Math.random() * 2 - 1);
         car.lapTimes.push(lapTimeSec);
         if (!car.bestLap || lapTimeSec < car.bestLap) {
           car.bestLap = lapTimeSec;
         }
 
-        // Lock-Up / Wide Corner Exit Incident Chance
-        if (Math.random() < tier.lockUpChance && car.lap > 1 && !this.safetyCarActive) {
-          car.lockUpTimer = Math.floor(60 + Math.random() * 60); // 1-2s delay
-          this.logCommentary(`⚠️ LOCK-UP! ${car.driverName} locks the front-left tyre and runs wide!`, 'incident');
+        // Random DNF Incident Chance
+        let dnfThreshold = this.weather === 'wet' ? 0.035 : 0.015;
+        if (this.trackKey === 'monaco') {
+          dnfThreshold *= 1.30; // Monaco: +30% crash/SC chance
+        } else if (this.trackKey === 'interlagos' && this.weather === 'wet') {
+          dnfThreshold *= 1.25; // Interlagos: +25% crash chance under wet conditions
         }
 
-        // Low-Probability DNF / Mechanical Retirement Chance
-        const dnfChancePerLap = (tier.dnfChance / this.totalLaps) * (this.weather === 'wet' ? 1.5 : 1.0);
-        if (Math.random() < dnfChancePerLap && car.lap > 1 && !this.safetyCarActive) {
+        if (Math.random() < dnfThreshold && car.lap > 1 && !this.safetyCarActive) {
           car.isDNF = true;
-          car.dnfReason = this.weather === 'wet' ? 'Aquaplaned into barrier' : 'Mechanical Breakdown';
-          this.logCommentary(`💥 DNF! ${car.driverName} (${car.playerName}) suffers ${car.dnfReason}!`, 'incident');
+          car.dnfReason = this.weather === 'wet' ? 'Aquaplaned / Crash' : 'Engine Breakdown';
+          this.logCommentary(`💥 CRASH! ${car.driverName} (${car.playerName}) suffers ${car.dnfReason}!`, 'incident');
           this.triggerSafetyCar();
         }
       }
@@ -519,75 +400,32 @@ const F1Simulator = {
     return { x, y };
   },
 
-  isCarInDRSZone(progress, track) {
-    if (!track.drsZones || track.drsZones.length === 0) return false;
-    const p = progress % 1.0;
-    return track.drsZones.some(zone => {
-      let start = zone.start;
-      let end = zone.end;
-      if (end < start) {
-        return p >= start || p <= end;
-      }
-      return p >= start && p <= end;
-    });
-  },
-
   processOvertakes() {
-    // Lap 1 and Safety Car restart lockout: Disable overtakes completely on Lap 1 or during/1-lap after SC
-    if (this.currentLap <= 1 || this.safetyCarActive || (this.scRestartLockout && this.scRestartLockout > 0)) {
-      return;
-    }
-
-    const track = this.tracks[this.trackKey];
-    const activeCars = this.cars.filter(c => !c.isDNF && !c.isPitStopping);
+    // Sort cars by current distance completed
+    const activeCars = this.cars.filter(c => !c.isDNF);
     activeCars.sort((a, b) => (b.lap + b.progress) - (a.lap + a.progress));
 
     for (let i = 0; i < activeCars.length - 1; i++) {
       const ahead = activeCars[i];
       const behind = activeCars[i + 1];
 
-      const distGap = (ahead.lap + ahead.progress) - (behind.lap + behind.progress);
-      const gapSec = distGap * track.baseLapTime;
+      const gap = (ahead.lap + ahead.progress) - (behind.lap + behind.progress);
 
-      const inDRS = this.isCarInDRSZone(behind.progress, track);
+      // Skill-weighted overtake probability: higher-skilled driver behind has much higher chance to pass
+      const skillDiff = behind.skill - ahead.skill;
+      const baseOvertakeChance = 0.05 + (skillDiff / 100) * 0.12;
 
-      // Reset single-trigger zone guard if car exits DRS zone
-      if (!inDRS) {
-        behind.hasOvertakenInZone = false;
-      }
+      // Proximity threshold for overtake
+      if (gap < 0.006 && !this.safetyCarActive && Math.random() < Math.max(0.01, baseOvertakeChance)) {
+        // Perform swap
+        const tempProg = ahead.progress;
+        ahead.progress = behind.progress;
+        behind.progress = tempProg;
 
-      // Restrict overtakes strictly to DRS straightaways with single-trigger guard per zone
-      if (inDRS && !behind.hasOvertakenInZone && gapSec <= 1.0) {
-        const skillAdvantage = behind.skill - ahead.skill;
-        if (skillAdvantage >= -5 && Math.random() < 0.08) {
-          behind.hasOvertakenInZone = true;
-
-          // Perform swap with top-speed boost
-          const tempProg = ahead.progress;
-          ahead.progress = behind.progress + 0.003;
-          behind.progress = tempProg;
-
-          this.logCommentary(`⚡ DRS OVERTAKE! ${behind.driverName} uses DRS on the straightaway to pass ${ahead.driverName}!`, 'overtake');
-          break;
-        }
+        this.logCommentary(`⚔️ OVERTAKE! ${behind.driverName} (Skill: ${behind.skill}) passes ${ahead.driverName}!`, 'overtake');
+        break;
       }
     }
-  },
-
-  logCommentary(text, type = 'normal') {
-    const now = performance.now();
-    // Commentary Rate Limiter: minimum 2.5s delay between event logs
-    if (this.lastCommentaryTime && (now - this.lastCommentaryTime < 2500) && type !== 'system') {
-      return;
-    }
-    this.lastCommentaryTime = now;
-
-    const feed = document.getElementById('commentary-feed');
-    const div = document.createElement('div');
-    div.className = `feed-item ${type}`;
-    div.textContent = text;
-    feed.appendChild(div);
-    feed.scrollTop = feed.scrollHeight;
   },
 
   triggerSafetyCar() {
@@ -633,136 +471,17 @@ const F1Simulator = {
     ctx.strokeStyle = '#E10600';
     ctx.stroke();
 
-    // Track Base Asphalt
+    // Track Surface: Solid black fill (#000000)
     drawSmoothPath();
     ctx.lineWidth = 22;
     ctx.strokeStyle = '#000000';
     ctx.stroke();
 
-    // Render Alternating Red-and-White Apex Kerbs (Rumble Strips)
-    track.path.forEach((pt, i) => {
-      if (pt.type === 'corner') {
-        const x = pt.x * width;
-        const y = pt.y * height;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(x, y, 16, 0, Math.PI * 2);
-        ctx.lineWidth = 6;
-        ctx.strokeStyle = (i % 2 === 0) ? '#E10600' : '#FFFFFF';
-        ctx.setLineDash([4, 4]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-      }
-    });
-
-    // Draw Start/Finish Line Arch & Starting Grid Slots (P1, P2, P3...)
-    const startPt = track.path[0];
-    const sfX = startPt.x * width;
-    const sfY = startPt.y * height;
-
-    // Render Pit Lane & Pit Box Area (#FFCC00 outline with hazard stripes)
-    const pitX = sfX - 35;
-    const pitY = sfY + 25;
-
-    ctx.fillStyle = 'rgba(255, 204, 0, 0.15)';
-    ctx.strokeStyle = '#FFCC00';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 4]);
-    ctx.fillRect(pitX - 20, pitY - 8, 40, 16);
-    ctx.strokeRect(pitX - 20, pitY - 8, 40, 16);
-    ctx.setLineDash([]);
-
-    ctx.fillStyle = '#FFCC00';
-    ctx.font = 'bold 8px "Orbitron", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('PIT BOX', pitX, pitY + 16);
-
-    ctx.beginPath();
-    ctx.arc(sfX, sfY, 16, 0, 2 * Math.PI);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-    ctx.fill();
-
-    // Grid Slot Markings (P1, P2, P3...) in staggered 2-column F1 grid formation
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.font = 'bold 9px "Orbitron", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('FINISH', sfX, sfY - 20);
-
-    this.cars.forEach((car, idx) => {
-      if (this.currentLap === 1 && !this.isPlaying) {
-        const gridCoords = this.getCanvasCoords(car.progress, track);
-        // Stagger offset: alternating left/right
-        const sideOffset = (idx % 2 === 0) ? -12 : 12;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(gridCoords.x + sideOffset - 8, gridCoords.y - 6, 16, 12);
-
-        ctx.fillStyle = '#FFE600';
-        ctx.font = 'bold 8px "Orbitron", sans-serif';
-        ctx.fillText(`P${idx + 1}`, gridCoords.x + sideOffset, gridCoords.y - 8);
-      }
-    });
-
-    // Sector Split Lines (S1, S2, S3)
-    const numPoints = track.path.length;
-    const s1Idx = Math.floor(numPoints * 0.33);
-    const s2Idx = Math.floor(numPoints * 0.66);
-
-    [s1Idx, s2Idx].forEach((sIdx, idx) => {
-      const sPt = track.path[sIdx];
-      const sx = sPt.x * width;
-      const sy = sPt.y * height;
-
-      ctx.beginPath();
-      ctx.arc(sx, sy, 10, 0, Math.PI * 2);
-      ctx.strokeStyle = '#00F0FF';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.fillStyle = '#00F0FF';
-      ctx.font = 'bold 8px "Orbitron", sans-serif';
-      ctx.fillText(`S${idx + 1}`, sx, sy - 12);
-    });
-
-    // Render Highlighted DRS Zones
-    if (track.drsZones && track.drsZones.length > 0) {
-      track.drsZones.forEach(zone => {
-        ctx.beginPath();
-        const steps = 30;
-        let startProg = zone.start;
-        let endProg = zone.end;
-        if (endProg < startProg) endProg += 1.0;
-
-        for (let s = 0; s <= steps; s++) {
-          const p = (startProg + (s / steps) * (endProg - startProg)) % 1.0;
-          const coords = this.getCanvasCoords(p, track);
-          if (s === 0) ctx.moveTo(coords.x, coords.y);
-          else ctx.lineTo(coords.x, coords.y);
-        }
-
-        ctx.lineWidth = 14;
-        ctx.strokeStyle = 'rgba(0, 255, 102, 0.4)';
-        ctx.shadowColor = '#00FF66';
-        ctx.shadowBlur = 10;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-
-        // DRS Detection Line Label
-        const startCoords = this.getCanvasCoords(zone.start, track);
-        ctx.fillStyle = '#00FF66';
-        ctx.font = 'bold 10px "Orbitron", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('DRS ▶', startCoords.x, startCoords.y - 10);
-      });
-    }
-
-    // Track Centerline: Thin, dashed white line (#FFFFFF, [6, 6])
+    // Track Centerline: Thin, dashed yellow line (#FFFF00) running down middle
     drawSmoothPath();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.setLineDash([6, 6]);
+    ctx.strokeStyle = '#FFFF00';
+    ctx.setLineDash([8, 8]);
     ctx.stroke();
     ctx.setLineDash([]); // Reset dash pattern
 
@@ -781,50 +500,17 @@ const F1Simulator = {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
     ctx.fill();
 
-    // 2. Draw Driver Physics Dots, Dynamic Particles, & High-Tech Car HUDs
+    // 2. Draw Driver Physics Dots
     this.cars.forEach((car) => {
       if (car.isDNF) return;
 
       const coords = this.getCanvasCoords(car.progress, track);
-      const inDRS = this.isCarInDRSZone(car.progress, track);
-
-      // Dynamic Particle FX
-      if (inDRS && Math.random() < 0.4) {
-        // DRS Cyan Slipstream Airflow Trails (#00F0FF)
-        ctx.beginPath();
-        ctx.arc(coords.x - 10, coords.y, 2, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0, 240, 255, 0.6)';
-        ctx.fill();
-      }
-
-      if (car.lockUpTimer > 0) {
-        // Heavy Braking White Smoke Particles (#FFFFFF)
-        ctx.beginPath();
-        ctx.arc(coords.x + (Math.random() * 8 - 4), coords.y + (Math.random() * 8 - 4), 4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.fill();
-      }
-
-      // High-Speed Orange Sparks on Straightaway Top Speeds
-      const waypoint = this.getSegmentWaypoint(car.progress, track);
-      if (waypoint.type === 'straight' && Math.random() < 0.25) {
-        ctx.beginPath();
-        ctx.arc(coords.x + (Math.random() * 6 - 3), coords.y + 4, 2, 0, Math.PI * 2);
-        ctx.fillStyle = '#FF9900';
-        ctx.fill();
-      }
-
-      // Status Halo: Green = DRS Active, Yellow = Safety Car, Red = Lock-Up/Slow Stop
-      let haloColor = car.color;
-      if (inDRS) haloColor = '#00FF66';
-      else if (this.safetyCarActive) haloColor = '#FFCC00';
-      else if (car.lockUpTimer > 0 || car.isPitStopping) haloColor = '#FF0075';
 
       // Halo Outer Glow
       ctx.beginPath();
-      ctx.arc(coords.x, coords.y, 12, 0, 2 * Math.PI);
-      ctx.fillStyle = haloColor;
-      ctx.globalAlpha = 0.4;
+      ctx.arc(coords.x, coords.y, 11, 0, 2 * Math.PI);
+      ctx.fillStyle = car.color;
+      ctx.globalAlpha = 0.35;
       ctx.fill();
 
       // Main Solid Car Dot
@@ -844,21 +530,6 @@ const F1Simulator = {
       ctx.textBaseline = 'middle';
       const initials = car.driverName.substring(0, 2).toUpperCase();
       ctx.fillText(initials, coords.x, coords.y);
-
-      // Telemetry Floating HUD Badge (Short code + Speed e.g. "VER 320 KM/H")
-      const shortCode = car.driverName.substring(0, 3).toUpperCase();
-      const speedKm = Math.round(280 + (car.skill / 100) * 45);
-
-      ctx.fillStyle = 'rgba(6, 7, 17, 0.85)';
-      ctx.strokeStyle = haloColor;
-      ctx.lineWidth = 1;
-      ctx.fillRect(coords.x - 28, coords.y - 24, 56, 12);
-      ctx.strokeRect(coords.x - 28, coords.y - 24, 56, 12);
-
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 7px "Orbitron", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${shortCode} ${speedKm}KPH`, coords.x, coords.y - 18);
     });
 
     // 3. Update UI Telemetry Banner
@@ -902,15 +573,13 @@ const F1Simulator = {
         gapTd.style.color = '#00E676';
       } else {
         const gapDist = (leader.lap + leader.progress) - (car.lap + car.progress);
-        const gapSec = (gapDist * this.tracks[this.trackKey].baseLapTime).toFixed(3);
+        const gapSec = (gapDist * this.tracks[this.trackKey].baseLapTime).toFixed(1);
         gapTd.textContent = `+${gapSec}s`;
       }
 
       const statusTd = document.createElement('td');
       if (car.isDNF) {
         statusTd.innerHTML = `<span style="color:#FF3333; font-weight:bold;">DNF</span>`;
-      } else if (car.isPitStopping) {
-        statusTd.innerHTML = `<span style="color:#FFE600; font-weight:bold;">PIT STOP</span>`;
       } else if (this.safetyCarActive) {
         statusTd.innerHTML = `<span style="color:#FFCC00;">SC</span>`;
       } else {
@@ -1026,9 +695,7 @@ const F1Simulator = {
     const winningPlayer = teamScores[0];
 
     // 4. Populate Results Overlay & Physical Podium Slots
-    const championTitle = document.getElementById('champion-announcement');
-    championTitle.className = 'champion-title hidden-champion';
-    championTitle.textContent = 'CHAMPIONSHIP CEREMONY - REVEALING PODIUM...';
+    document.getElementById('champion-announcement').textContent = `${winningPlayer.playerName.toUpperCase()} WINS THE F1 DRAFT! 🏆`;
 
     // Populate Podium P1, P2, P3 Slot text
     const p1Team = teamScores[0] || { playerName: '--', totalPoints: 0 };
@@ -1073,14 +740,12 @@ const F1Simulator = {
       driverTbody.appendChild(tr);
     });
 
-    // Show Victory Modal & Trigger Kahoot-Style Sequential Rising Podium (Preserving Surprise Factor)
+    // Show Victory Modal & Trigger Kahoot-Style Sequential Rising Podium (No Spotlight)
     document.getElementById('results-modal').classList.remove('hidden');
 
-    // Reset initial hidden state for all podium blocks, info cards, and trophy badge
+    // Reset initial hidden state for all podium blocks & info cards
     document.querySelectorAll('.podium-block').forEach(b => b.classList.remove('raised'));
     document.querySelectorAll('.podium-driver-info').forEach(i => i.classList.remove('revealed'));
-    const trophyBadge = document.querySelector('.trophy-badge');
-    if (trophyBadge) trophyBadge.classList.remove('show-trophy');
 
     // PHASE 1 (3rd Place Reveal): P3 rises and locks into position
     setTimeout(() => {
@@ -1098,17 +763,12 @@ const F1Simulator = {
       if (p2Info) p2Info.classList.add('revealed');
     }, 1200);
 
-    // PHASE 3 (1st Place Champion Reveal): Tall central P1 champion pillar rises, reveals winner banner, trophy & confetti
+    // PHASE 3 (1st Place Champion Reveal): Tall central P1 champion pillar rises, reveals champion name, trophy & confetti
     setTimeout(() => {
       const p1Block = document.querySelector('.p1-block');
       const p1Info = document.querySelector('#podium-slot-p1 .podium-driver-info');
       if (p1Block) p1Block.classList.add('raised');
       if (p1Info) p1Info.classList.add('revealed');
-      if (trophyBadge) trophyBadge.classList.add('show-trophy');
-
-      // Reveal Winner Header Banner simultaneously with P1 Reveal
-      championTitle.textContent = `${winningPlayer.playerName.toUpperCase()} WINS THE F1 DRAFT! 🏆`;
-      championTitle.className = 'champion-title revealed-champion';
 
       // Particle Confetti Burst
       this.launchConfetti();
