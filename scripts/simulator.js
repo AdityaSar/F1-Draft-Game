@@ -772,7 +772,9 @@ const F1Simulator = {
     const winningPlayer = teamScores[0];
 
     // 4. Populate Results Overlay & Physical Podium Slots
-    document.getElementById('champion-announcement').textContent = `${winningPlayer.playerName.toUpperCase()} WINS THE F1 DRAFT! 🏆`;
+    const championTitle = document.getElementById('champion-announcement');
+    championTitle.className = 'champion-title hidden-champion';
+    championTitle.textContent = 'CHAMPIONSHIP CEREMONY - REVEALING PODIUM...';
 
     // Populate Podium P1, P2, P3 Slot text
     const p1Team = teamScores[0] || { playerName: '--', totalPoints: 0 };
@@ -817,7 +819,7 @@ const F1Simulator = {
       driverTbody.appendChild(tr);
     });
 
-    // Show Victory Modal & Trigger Kahoot-Style Sequential Rising Podium (No Spotlight)
+    // Show Victory Modal & Trigger Kahoot-Style Sequential Rising Podium (Preserving Surprise Factor)
     document.getElementById('results-modal').classList.remove('hidden');
 
     // Reset initial hidden state for all podium blocks, info cards, and trophy badge
@@ -842,13 +844,17 @@ const F1Simulator = {
       if (p2Info) p2Info.classList.add('revealed');
     }, 1200);
 
-    // PHASE 3 (1st Place Champion Reveal): Tall central P1 champion pillar rises, reveals champion name, trophy & confetti
+    // PHASE 3 (1st Place Champion Reveal): Tall central P1 champion pillar rises, reveals winner banner, trophy & confetti
     setTimeout(() => {
       const p1Block = document.querySelector('.p1-block');
       const p1Info = document.querySelector('#podium-slot-p1 .podium-driver-info');
       if (p1Block) p1Block.classList.add('raised');
       if (p1Info) p1Info.classList.add('revealed');
       if (trophyBadge) trophyBadge.classList.add('show-trophy');
+
+      // Reveal Winner Header Banner simultaneously with P1 Reveal
+      championTitle.textContent = `${winningPlayer.playerName.toUpperCase()} WINS THE F1 DRAFT! 🏆`;
+      championTitle.className = 'champion-title revealed-champion';
 
       // Particle Confetti Burst
       this.launchConfetti();
