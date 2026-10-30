@@ -287,9 +287,20 @@ const F1Simulator = {
     this.animationFrameId = requestAnimationFrame(() => this.loop());
   },
 
+  getDriverTierParams(skill) {
+    if (skill >= 90) { // Tier 1
+      return { paceMult: 1.15, lapVariance: 0.10, lockUpChance: 0.015, dnfChance: 0.005 };
+    } else if (skill >= 80) { // Tier 2
+      return { paceMult: 1.07, lapVariance: 0.20, lockUpChance: 0.020, dnfChance: 0.010 };
+    } else if (skill >= 70) { // Tier 3
+      return { paceMult: 0.98, lapVariance: 0.38, lockUpChance: 0.040, dnfChance: 0.018 };
+    } else { // Tier 4 (< 70)
+      return { paceMult: 0.90, lapVariance: 0.60, lockUpChance: 0.055, dnfChance: 0.025 };
+    }
+  },
+
   updatePhysics() {
     const track = this.tracks[this.trackKey];
-    // Base speed increment per frame
     const baseSpeed = (1 / (track.baseLapTime * 60)) * this.simSpeed;
 
     // Check Mid-Race Automated Rain Chance (Lap 8-12)
@@ -314,16 +325,22 @@ const F1Simulator = {
       if (car.isDNF) return;
 
       if (car.isPitStopping) {
-        // Hold car in pit lane
-        return;
+        return; // Hold car in pit lane
+      }
+
+      const tier = this.getDriverTierParams(car.skill);
+
+      // Handle lock-up penalty timer
+      if (car.lockUpTimer && car.lockUpTimer > 0) {
+        car.lockUpTimer -= 1;
       }
 
       // Calculate current position segment speed multiplier
       const waypoint = this.getSegmentWaypoint(car.progress, track);
       let speedMult = waypoint.speedFactor || 1.0;
 
-      // Natural Pace & Tyre Wear: Tyre wears progressively per lap
-      const tireWear = Math.max(0.82, 1.0 - (car.lap / this.totalLaps) * 0.12);
+      // Tyre Wear degradation
+      const tireWear = Math.max(0.80, 1.0 - (car.lap / this.totalLaps) * 0.12);
       speedMult *= tireWear;
 
       // Track-Specific Physics Modifiers
@@ -338,36 +355,48 @@ const F1Simulator = {
         speedMult *= 0.85;
       }
 
+      // Lock-Up penalty (1-2s speed drop)
+      if (car.lockUpTimer && car.lockUpTimer > 0) {
+        speedMult *= 0.55;
+      }
+
       // Safety car restriction & field compression
       if (this.safetyCarActive) {
         speedMult = Math.min(speedMult, 0.4);
       }
 
-      // Driver Skill influence: Fast drivers pull away in clean air
-      const skillMult = 0.80 + (car.skill / 100) * 0.38;
+      // Driver Skill tier pace influence
+      const skillMult = tier.paceMult;
 
       // Advance car progress
       const frameProgress = baseSpeed * speedMult * skillMult;
       car.progress += frameProgress;
 
-      // Check Lap Completion
+      // Check Lap Completion & Random Incidents
       if (car.progress >= 1.0) {
         car.progress -= 1.0;
         car.lap += 1;
 
-        // Calculate lap time
-        const lapTimeSec = track.baseLapTime * (1 / skillMult) + (Math.random() * 1.5 - 0.75);
+        // Calculate lap time with tier-specific consistency variance
+        const variance = (Math.random() * 2 - 1) * tier.lapVariance;
+        const lapTimeSec = track.baseLapTime * (1 / skillMult) + variance;
         car.lapTimes.push(lapTimeSec);
         if (!car.bestLap || lapTimeSec < car.bestLap) {
           car.bestLap = lapTimeSec;
         }
 
-        // Rare Incident Chance (~2% per lap)
-        let dnfThreshold = this.weather === 'wet' ? 0.025 : 0.012;
-        if (Math.random() < dnfThreshold && car.lap > 1 && !this.safetyCarActive) {
+        // Lock-Up / Wide Corner Exit Incident Chance
+        if (Math.random() < tier.lockUpChance && car.lap > 1 && !this.safetyCarActive) {
+          car.lockUpTimer = Math.floor(60 + Math.random() * 60); // 1-2s delay
+          this.logCommentary(`⚠️ LOCK-UP! ${car.driverName} locks the front-left tyre and runs wide!`, 'incident');
+        }
+
+        // Low-Probability DNF / Mechanical Retirement Chance
+        const dnfChancePerLap = (tier.dnfChance / this.totalLaps) * (this.weather === 'wet' ? 1.5 : 1.0);
+        if (Math.random() < dnfChancePerLap && car.lap > 1 && !this.safetyCarActive) {
           car.isDNF = true;
-          car.dnfReason = this.weather === 'wet' ? 'Aquaplaned / Crash' : 'Engine Breakdown';
-          this.logCommentary(`💥 CRASH! ${car.driverName} (${car.playerName}) suffers ${car.dnfReason}!`, 'incident');
+          car.dnfReason = this.weather === 'wet' ? 'Aquaplaned into barrier' : 'Mechanical Breakdown';
+          this.logCommentary(`💥 DNF! ${car.driverName} (${car.playerName}) suffers ${car.dnfReason}!`, 'incident');
           this.triggerSafetyCar();
         }
       }
