@@ -301,12 +301,9 @@ const AuctionManager = {
     document.getElementById('btn-undo').disabled = F1App.state.auctionHistory.length === 0;
 
     // Proceed to Race Button condition:
-    // Unlocked if all players have at least 1 driver, OR all wheel options are exhausted/filled
+    // Unlocked whenever at least 1 driver is drafted across any team
     const totalDraftedDrivers = F1App.state.players.reduce((sum, p) => sum + p.roster.length, 0);
-    const allPlayersHaveMinDrivers = F1App.state.players.every(p => p.roster.length >= 1);
-    const wheelExhausted = F1App.state.drivers.length === 0;
-
-    const canProceed = (totalDraftedDrivers >= 1 && (allPlayersHaveMinDrivers || wheelExhausted));
+    const canProceed = totalDraftedDrivers >= 1;
     document.getElementById('btn-proceed-race').disabled = !canProceed;
   }
 };
