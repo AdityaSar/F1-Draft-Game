@@ -740,6 +740,23 @@ body {
 
 .modal-large {
   max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Custom smooth dark scrollbar for modal overlay */
+.modal-large::-webkit-scrollbar {
+  width: 8px;
+}
+.modal-large::-webkit-scrollbar-track {
+  background: rgba(10, 12, 20, 0.8);
+}
+.modal-large::-webkit-scrollbar-thumb {
+  background: var(--border-cyan);
+  border-radius: 4px;
+}
+.modal-large::-webkit-scrollbar-thumb:hover {
+  background: var(--cyan-neon);
 }
 
 .modal-header {
@@ -1161,6 +1178,14 @@ body {
 .trophy-badge {
   font-size: 2.2rem;
   margin-bottom: -5px;
+  opacity: 0;
+  transform: scale(0.3);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.trophy-badge.show-trophy {
+  opacity: 1;
+  transform: scale(1);
   animation: bounceTrophy 1.5s infinite ease-in-out;
 }
 
