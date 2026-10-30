@@ -176,6 +176,11 @@ const F1Simulator = {
       document.getElementById('telemetry-weather-indicator').textContent = this.weather === 'wet' ? '🌧️ WET' : '☀️ DRY';
     });
 
+    const qualyBtn = document.getElementById('qualifying-btn');
+    if (qualyBtn) {
+      qualyBtn.onclick = () => this.runQualifyingSession();
+    }
+
     document.getElementById('btn-sim-play').onclick = () => this.play();
     document.getElementById('btn-sim-pause').onclick = () => this.pause();
 
@@ -197,6 +202,50 @@ const F1Simulator = {
     this.renderFrame();
   },
 
+  runQualifyingSession() {
+    if (this.isPlaying) this.pause();
+
+    const qualyBtn = document.getElementById('qualifying-btn');
+    if (qualyBtn) qualyBtn.style.display = 'none';
+
+    this.logCommentary('⏱️ QUALIFYING SESSION STARTED! Cars taking to the track for 1-lap flying qualifying...', 'system');
+
+    // Run 1-lap flying qualifying animation (simSpeed = 5x)
+    let animProgress = 0;
+    const animateQualy = () => {
+      animProgress += 0.02;
+      this.cars.forEach((car, idx) => {
+        car.progress = (animProgress + (idx * 0.01)) % 1.0;
+      });
+      this.renderFrame();
+
+      if (animProgress < 1.0) {
+        requestAnimationFrame(animateQualy);
+      } else {
+        // Compute individual qualifying lap times (70s - 78s)
+        this.cars.forEach(car => {
+          const tier = this.getDriverTierParams(car.skill);
+          car.qualyTime = 70.0 + (100 - car.skill) * 0.22 + (Math.random() * 0.6 - 0.3);
+        });
+
+        // Sort cars strictly by qualifying time
+        this.cars.sort((a, b) => a.qualyTime - b.qualyTime);
+
+        // Assign grid positions & staggered 2-column F1 starting grid formation
+        this.cars.forEach((car, index) => {
+          car.gridPos = index + 1;
+          car.progress = Math.max(0, 0.06 - index * 0.007);
+        });
+
+        const pole = this.cars[0];
+        this.logCommentary(`🏁 QUALIFYING COMPLETE! Pole Position: ${pole.driverName} (${pole.playerName}) with ${pole.qualyTime.toFixed(3)}s!`, 'system');
+        this.renderFrame();
+      }
+    };
+
+    requestAnimationFrame(animateQualy);
+  },
+
   buildDraftedCarsList() {
     this.cars = [];
     let carId = 1;
@@ -204,11 +253,8 @@ const F1Simulator = {
     // Collect all drafted drivers across all players using custom normalized driver skill ratings
     F1App.state.players.forEach(player => {
       player.roster.forEach(item => {
-        // Look up skill from global driverMap or item object fallback
         const driverData = F1App.state.driverMap[item.name];
         const driverSkill = item.skill || (driverData ? driverData.skill : 82);
-
-        // Qualifying time formula strictly reflects driver skill rating + slight random variance
         const qualyTime = (100 - driverSkill) + (Math.random() * 1.5 - 0.75);
 
         this.cars.push({
@@ -218,8 +264,7 @@ const F1Simulator = {
           color: player.color,
           skill: driverSkill,
           qualyTime: qualyTime,
-          // Telemetry
-          progress: 0, // 0 to 1 along circuit
+          progress: 0,
           lap: 1,
           isDNF: false,
           dnfReason: null,
@@ -233,7 +278,7 @@ const F1Simulator = {
     // Sort grid by qualifying lap times
     this.cars.sort((a, b) => a.qualyTime - b.qualyTime);
 
-    // Give slight staggered start progress based on grid position
+    // Position staggered 2-column grid along main straight
     this.cars.forEach((car, index) => {
       car.gridPos = index + 1;
       car.progress = Math.max(0, 0.05 - index * 0.008);
@@ -488,8 +533,12 @@ const F1Simulator = {
   },
 
   processOvertakes() {
+    // Lap 1 and Safety Car restart lockout: Disable overtakes completely on Lap 1 or during/1-lap after SC
+    if (this.currentLap <= 1 || this.safetyCarActive || (this.scRestartLockout && this.scRestartLockout > 0)) {
+      return;
+    }
+
     const track = this.tracks[this.trackKey];
-    // Sort cars by current distance completed
     const activeCars = this.cars.filter(c => !c.isDNF && !c.isPitStopping);
     activeCars.sort((a, b) => (b.lap + b.progress) - (a.lap + a.progress));
 
@@ -498,15 +547,21 @@ const F1Simulator = {
       const behind = activeCars[i + 1];
 
       const distGap = (ahead.lap + ahead.progress) - (behind.lap + behind.progress);
-      // Convert gap into time seconds (approx)
       const gapSec = distGap * track.baseLapTime;
 
-      // Overtakes ONLY occur inside DRS zones when trailing car is within 1.0s gap AND driver has skill/tyre advantage
       const inDRS = this.isCarInDRSZone(behind.progress, track);
 
-      if (inDRS && gapSec <= 1.0 && !this.safetyCarActive) {
+      // Reset single-trigger zone guard if car exits DRS zone
+      if (!inDRS) {
+        behind.hasOvertakenInZone = false;
+      }
+
+      // Restrict overtakes strictly to DRS straightaways with single-trigger guard per zone
+      if (inDRS && !behind.hasOvertakenInZone && gapSec <= 1.0) {
         const skillAdvantage = behind.skill - ahead.skill;
         if (skillAdvantage >= -5 && Math.random() < 0.08) {
+          behind.hasOvertakenInZone = true;
+
           // Perform swap with top-speed boost
           const tempProg = ahead.progress;
           ahead.progress = behind.progress + 0.003;
@@ -517,6 +572,22 @@ const F1Simulator = {
         }
       }
     }
+  },
+
+  logCommentary(text, type = 'normal') {
+    const now = performance.now();
+    // Commentary Rate Limiter: minimum 2.5s delay between event logs
+    if (this.lastCommentaryTime && (now - this.lastCommentaryTime < 2500) && type !== 'system') {
+      return;
+    }
+    this.lastCommentaryTime = now;
+
+    const feed = document.getElementById('commentary-feed');
+    const div = document.createElement('div');
+    div.className = `feed-item ${type}`;
+    div.textContent = text;
+    feed.appendChild(div);
+    feed.scrollTop = feed.scrollHeight;
   },
 
   triggerSafetyCar() {
@@ -613,11 +684,26 @@ const F1Simulator = {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
     ctx.fill();
 
-    // Grid Slot Markings (P1, P2, P3...)
+    // Grid Slot Markings (P1, P2, P3...) in staggered 2-column F1 grid formation
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.font = 'bold 9px "Orbitron", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('FINISH', sfX, sfY - 20);
+
+    this.cars.forEach((car, idx) => {
+      if (this.currentLap === 1 && !this.isPlaying) {
+        const gridCoords = this.getCanvasCoords(car.progress, track);
+        // Stagger offset: alternating left/right
+        const sideOffset = (idx % 2 === 0) ? -12 : 12;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(gridCoords.x + sideOffset - 8, gridCoords.y - 6, 16, 12);
+
+        ctx.fillStyle = '#FFE600';
+        ctx.font = 'bold 8px "Orbitron", sans-serif';
+        ctx.fillText(`P${idx + 1}`, gridCoords.x + sideOffset, gridCoords.y - 8);
+      }
+    });
 
     // Sector Split Lines (S1, S2, S3)
     const numPoints = track.path.length;
