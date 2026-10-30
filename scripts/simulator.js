@@ -1,7 +1,8 @@
 /**
  * F1 Draft - Live Track Simulator & Telemetry Engine
- * Features: Vector Track Circuit Canvas, Driver Physics Dots, Commentary Feed,
- * Safety Car / Incidents, Weather Variances, Real-time Leaderboards & Points Scoring.
+ * Features: GeoJSON SVG Circuit Map Visualizer, Car Physics & Curvature Dynamics,
+ * Path Interpolation with Rotation & 3-Letter Driver Labels,
+ * Weather Controls, Live Leaderboard, Safety Cars, and Championship Podium.
  */
 
 const F1Simulator = {
@@ -9,9 +10,12 @@ const F1Simulator = {
   ctx: null,
   animationFrameId: null,
 
+  // Path Cache for SVG elements
+  pathCache: {},
+
   // Sim State
   isPlaying: false,
-  simSpeed: 1, // 1x, 2x, 5x
+  simSpeed: 1, // 1x, 5x, 20x, 50x
   currentLap: 1,
   totalLaps: 20,
   weather: 'dry', // 'dry' or 'wet'
@@ -28,122 +32,34 @@ const F1Simulator = {
   // F1 Championship Points Scale
   pointsScale: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
 
-  // Track Circuit Vector Geometry Definitions & Realistic DRS Zones
-  tracks: {
-    monaco: {
-      name: 'Monaco - Circuit de Monaco',
-      lengthKm: 3.337,
-      baseLapTime: 72.0,
-      drsZones: [{ start: 0.88, end: 0.08, label: 'DRS ZONE 1' }],
-      path: [
-        { x: 0.35, y: 0.28, type: 'straight' },
-        { x: 0.28, y: 0.18, type: 'corner', speedFactor: 0.4 },
-        { x: 0.42, y: 0.22, type: 'straight' },
-        { x: 0.60, y: 0.25, type: 'corner', speedFactor: 0.55 },
-        { x: 0.82, y: 0.32, type: 'corner', speedFactor: 0.45 },
-        { x: 0.88, y: 0.45, type: 'corner', speedFactor: 0.25 },
-        { x: 0.78, y: 0.40, type: 'corner', speedFactor: 0.4 },
-        { x: 0.70, y: 0.48, type: 'straight' },
-        { x: 0.52, y: 0.58, type: 'straight' },
-        { x: 0.45, y: 0.68, type: 'corner', speedFactor: 0.45 },
-        { x: 0.38, y: 0.78, type: 'corner', speedFactor: 0.55 },
-        { x: 0.32, y: 0.85, type: 'corner', speedFactor: 0.5 },
-        { x: 0.24, y: 0.88, type: 'corner', speedFactor: 0.3 },
-        { x: 0.28, y: 0.75, type: 'corner', speedFactor: 0.45 },
-        { x: 0.35, y: 0.28, type: 'straight' }
-      ]
-    },
-    monza: {
-      name: 'Monza - Temple of Speed',
-      lengthKm: 5.793,
-      baseLapTime: 81.0,
-      drsZones: [
-        { start: 0.85, end: 0.12, label: 'DRS ZONE 1' },
-        { start: 0.35, end: 0.55, label: 'DRS ZONE 2' }
-      ],
-      path: [
-        { x: 0.10, y: 0.75, type: 'straight' },
-        { x: 0.80, y: 0.75, type: 'corner', speedFactor: 0.45 },
-        { x: 0.85, y: 0.50, type: 'straight' },
-        { x: 0.80, y: 0.25, type: 'corner', speedFactor: 0.5 },
-        { x: 0.50, y: 0.20, type: 'straight' },
-        { x: 0.20, y: 0.25, type: 'corner', speedFactor: 0.55 },
-        { x: 0.10, y: 0.50, type: 'corner', speedFactor: 0.65 }
-      ]
-    },
-    spa: {
-      name: 'Spa - Francorchamps',
-      lengthKm: 7.004,
-      baseLapTime: 104.0,
-      drsZones: [
-        { start: 0.25, end: 0.48, label: 'KEMMEL DRS' },
-        { start: 0.82, end: 0.08, label: 'PIT DRS' }
-      ],
-      path: [
-        { x: 0.15, y: 0.80, type: 'straight' },
-        { x: 0.30, y: 0.85, type: 'corner', speedFactor: 0.4 },
-        { x: 0.55, y: 0.70, type: 'straight' },
-        { x: 0.85, y: 0.50, type: 'straight' },
-        { x: 0.80, y: 0.20, type: 'corner', speedFactor: 0.5 },
-        { x: 0.50, y: 0.15, type: 'corner', speedFactor: 0.6 },
-        { x: 0.20, y: 0.30, type: 'straight' },
-        { x: 0.10, y: 0.60, type: 'corner', speedFactor: 0.35 }
-      ]
-    },
-    silverstone: {
-      name: 'Silverstone - GP Circuit',
-      lengthKm: 5.891,
-      baseLapTime: 87.0,
-      drsZones: [
-        { start: 0.25, end: 0.40, label: 'WELLINGTON DRS' },
-        { start: 0.65, end: 0.80, label: 'HANGAR DRS' }
-      ],
-      path: [
-        { x: 0.15, y: 0.70, type: 'straight' },
-        { x: 0.35, y: 0.80, type: 'corner', speedFactor: 0.6 },
-        { x: 0.60, y: 0.75, type: 'straight' },
-        { x: 0.85, y: 0.60, type: 'corner', speedFactor: 0.5 },
-        { x: 0.80, y: 0.30, type: 'corner', speedFactor: 0.7 },
-        { x: 0.50, y: 0.20, type: 'straight' },
-        { x: 0.20, y: 0.30, type: 'corner', speedFactor: 0.55 },
-        { x: 0.10, y: 0.50, type: 'corner', speedFactor: 0.45 }
-      ]
-    },
-    suzuka: {
-      name: 'Suzuka - International Racing Course',
-      lengthKm: 5.807,
-      baseLapTime: 89.0,
-      drsZones: [{ start: 0.85, end: 0.12, label: 'DRS ZONE 1' }],
-      path: [
-        { x: 0.15, y: 0.75, type: 'straight' },
-        { x: 0.35, y: 0.85, type: 'corner', speedFactor: 0.6 },
-        { x: 0.60, y: 0.70, type: 'corner', speedFactor: 0.5 },
-        { x: 0.80, y: 0.50, type: 'straight' },
-        { x: 0.75, y: 0.25, type: 'corner', speedFactor: 0.4 },
-        { x: 0.45, y: 0.20, type: 'straight' },
-        { x: 0.25, y: 0.35, type: 'corner', speedFactor: 0.65 },
-        { x: 0.40, y: 0.55, type: 'straight' },
-        { x: 0.10, y: 0.60, type: 'corner', speedFactor: 0.35 }
-      ]
-    },
-    interlagos: {
-      name: 'Interlagos - Autódromo José Carlos Pace',
-      lengthKm: 4.309,
-      baseLapTime: 70.5,
-      drsZones: [
-        { start: 0.85, end: 0.15, label: 'MAIN DRS' },
-        { start: 0.20, end: 0.40, label: 'RETA OPOSTA DRS' }
-      ],
-      path: [
-        { x: 0.20, y: 0.75, type: 'straight' },
-        { x: 0.40, y: 0.85, type: 'corner', speedFactor: 0.45 },
-        { x: 0.75, y: 0.70, type: 'straight' },
-        { x: 0.85, y: 0.45, type: 'corner', speedFactor: 0.5 },
-        { x: 0.65, y: 0.20, type: 'corner', speedFactor: 0.4 },
-        { x: 0.35, y: 0.25, type: 'corner', speedFactor: 0.5 },
-        { x: 0.15, y: 0.45, type: 'straight' }
-      ]
+  // Base lap times for simulation physics (seconds per lap)
+  trackBaseLapTimes: {
+    monaco: 72.0,
+    monza: 81.0,
+    spa: 104.0,
+    silverstone: 87.0,
+    suzuka: 89.0,
+    interlagos: 70.5
+  },
+
+  getTrackPathObj(trackKey) {
+    if (!this.pathCache[trackKey]) {
+      const data = typeof TRACK_DATA !== 'undefined' ? TRACK_DATA[trackKey] : null;
+      if (!data) return null;
+
+      const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      pathEl.setAttribute('d', data.path);
+
+      this.pathCache[trackKey] = {
+        el: pathEl,
+        length: pathEl.getTotalLength(),
+        path2d: new Path2D(data.path),
+        name: data.name,
+        location: data.location,
+        lengthMeters: data.lengthMeters
+      };
     }
+    return this.pathCache[trackKey];
   },
 
   initSimulator() {
@@ -193,7 +109,9 @@ const F1Simulator = {
       };
     });
 
-    this.logCommentary(`Grid formed with ${this.cars.length} drafted drivers. Click PLAY to start!`, 'system');
+    const trackObj = this.getTrackPathObj(this.trackKey);
+    const trackName = trackObj ? trackObj.name : 'Circuit';
+    this.logCommentary(`Grid formed with ${this.cars.length} drafted drivers at ${trackName}. Click PLAY to start!`, 'system');
     this.renderFrame();
   },
 
@@ -202,41 +120,52 @@ const F1Simulator = {
     let carId = 1;
 
     // Collect all drafted drivers across all players using custom normalized driver skill ratings
-    F1App.state.players.forEach(player => {
-      player.roster.forEach(item => {
-        // Look up skill from global driverMap or item object fallback
-        const driverData = F1App.state.driverMap[item.name];
-        const driverSkill = item.skill || (driverData ? driverData.skill : 82);
+    if (typeof F1App !== 'undefined' && F1App.state && F1App.state.players) {
+      F1App.state.players.forEach(player => {
+        player.roster.forEach(item => {
+          const driverData = F1App.state.driverMap ? F1App.state.driverMap[item.name] : null;
+          const driverSkill = item.skill || (driverData ? driverData.skill : 82);
 
-        // Qualifying time formula strictly reflects driver skill rating + slight random variance
-        const qualyTime = (100 - driverSkill) + (Math.random() * 1.5 - 0.75);
+          // Qualifying time formula reflects driver skill rating + random variance
+          const qualyTime = (100 - driverSkill) + (Math.random() * 1.5 - 0.75);
 
-        this.cars.push({
-          id: carId++,
-          driverName: item.name,
-          playerName: player.name,
-          color: player.color,
-          skill: driverSkill,
-          qualyTime: qualyTime,
-          // Telemetry
-          progress: 0, // 0 to 1 along circuit
-          lap: 1,
-          isDNF: false,
-          dnfReason: null,
-          lapTimes: [],
-          bestLap: null,
-          currentSpeed: 0
+          // Generate 3-letter driver code (e.g., VER, HAM, LEC, NOR)
+          const nameParts = item.name.trim().split(/\s+/);
+          let label = '';
+          if (nameParts.length >= 2) {
+            label = nameParts[nameParts.length - 1].substring(0, 3).toUpperCase();
+          } else {
+            label = item.name.substring(0, 3).toUpperCase();
+          }
+
+          this.cars.push({
+            id: carId++,
+            driverName: item.name,
+            driverCode: label,
+            playerName: player.name,
+            color: player.color,
+            skill: driverSkill,
+            qualyTime: qualyTime,
+            // Telemetry
+            progress: 0, // 0 to 1 along circuit
+            lap: 1,
+            isDNF: false,
+            dnfReason: null,
+            lapTimes: [],
+            bestLap: null,
+            currentSpeed: 0
+          });
         });
       });
-    });
+    }
 
     // Sort grid by qualifying lap times
     this.cars.sort((a, b) => a.qualyTime - b.qualyTime);
 
-    // Give slight staggered start progress based on grid position
+    // Stagger start progress slightly based on grid position
     this.cars.forEach((car, index) => {
       car.gridPos = index + 1;
-      car.progress = Math.max(0, 0.05 - index * 0.008);
+      car.progress = Math.max(0, 0.04 - index * 0.006);
     });
   },
 
@@ -269,7 +198,10 @@ const F1Simulator = {
     this.buildDraftedCarsList();
     this.commentaryLogs = [];
     document.getElementById('commentary-feed').innerHTML = '';
-    this.logCommentary(`Track changed to ${this.tracks[this.trackKey].name}. Sim reset.`, 'system');
+
+    const trackObj = this.getTrackPathObj(this.trackKey);
+    const name = trackObj ? trackObj.name : this.trackKey;
+    this.logCommentary(`Track changed to ${name}. Sim reset.`, 'system');
     this.renderFrame();
   },
 
@@ -288,33 +220,33 @@ const F1Simulator = {
   },
 
   updatePhysics() {
-    const track = this.tracks[this.trackKey];
+    const trackObj = this.getTrackPathObj(this.trackKey);
+    if (!trackObj) return;
+
+    const baseLapTime = this.trackBaseLapTimes[this.trackKey] || 80.0;
     // Base speed increment per frame
-    const baseSpeed = (1 / (track.baseLapTime * 60)) * this.simSpeed;
+    const baseSpeed = (1 / (baseLapTime * 60)) * this.simSpeed;
 
     // Process each car
     this.cars.forEach((car) => {
       if (car.isDNF) return;
 
-      // Calculate current position segment speed multiplier
-      const waypoint = this.getSegmentWaypoint(car.progress, track);
-      let speedMult = waypoint.speedFactor || 1.0;
+      // 1. Curvature / Speed factor from path geometry
+      const dist = (car.progress % 1) * trackObj.length;
+      let speedMult = this.getCurvatureSpeedFactor(trackObj, dist);
 
       // Track-Specific Physics Modifiers
       if (this.trackKey === 'monaco') {
-        speedMult *= 0.80; // Monaco: -20% speed
+        speedMult *= 0.85; // Monaco: tighter street circuit
       } else if (this.trackKey === 'monza') {
-        if (waypoint.type === 'straight') {
-          speedMult *= 1.25; // Monza: +25% top speed on straights
-        }
+        speedMult *= 1.15; // Monza: high-speed temple
       } else if (this.trackKey === 'silverstone') {
-        // Silverstone: High tire wear modifier (progressively slows speed over race duration)
+        // Silverstone: tire wear over race distance
         const tireWearFactor = Math.max(0.85, 1.0 - (car.lap / this.totalLaps) * 0.15);
         speedMult *= tireWearFactor;
       } else if (this.trackKey === 'suzuka') {
-        // Suzuka: +15% performance boost in Sector 1 (S-Curves) for higher skill drivers (>= 80)
         if (car.progress <= 0.35 && car.skill >= 80) {
-          speedMult *= 1.15;
+          speedMult *= 1.15; // S-Curves skill bonus
         }
       }
 
@@ -341,7 +273,7 @@ const F1Simulator = {
         car.lap += 1;
 
         // Calculate lap time
-        const lapTimeSec = track.baseLapTime * (1 / skillMult) + (Math.random() * 2 - 1);
+        const lapTimeSec = baseLapTime * (1 / skillMult) + (Math.random() * 2 - 1);
         car.lapTimes.push(lapTimeSec);
         if (!car.bestLap || lapTimeSec < car.bestLap) {
           car.bestLap = lapTimeSec;
@@ -350,9 +282,9 @@ const F1Simulator = {
         // Random DNF Incident Chance
         let dnfThreshold = this.weather === 'wet' ? 0.035 : 0.015;
         if (this.trackKey === 'monaco') {
-          dnfThreshold *= 1.30; // Monaco: +30% crash/SC chance
+          dnfThreshold *= 1.30;
         } else if (this.trackKey === 'interlagos' && this.weather === 'wet') {
-          dnfThreshold *= 1.25; // Interlagos: +25% crash chance under wet conditions
+          dnfThreshold *= 1.25;
         }
 
         if (Math.random() < dnfThreshold && car.lap > 1 && !this.safetyCarActive) {
@@ -383,42 +315,26 @@ const F1Simulator = {
     this.processOvertakes();
   },
 
-  getSegmentWaypoint(progress, track) {
-    const numPoints = track.path.length;
-    const index = Math.floor(progress * numPoints) % numPoints;
-    return track.path[index];
-  },
+  getCurvatureSpeedFactor(trackObj, dist) {
+    const totalLength = trackObj.length;
+    const delta = 8;
+    const p0 = trackObj.el.getPointAtLength(dist % totalLength);
+    const p1 = trackObj.el.getPointAtLength((dist + delta) % totalLength);
+    const p2 = trackObj.el.getPointAtLength((dist + delta * 2) % totalLength);
 
-  getCanvasCoords(progress, track) {
-    const width = this.canvas.width;
-    const height = this.canvas.height;
-    const path = track.path;
-    const numPoints = path.length;
+    const a1 = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+    const a2 = Math.atan2(p2.y - p1.y, p2.x - p1.x);
 
-    const exactIndex = (progress % 1) * numPoints;
-    const idx1 = Math.floor(exactIndex) % numPoints;
-    const idx0 = (idx1 - 1 + numPoints) % numPoints;
-    const idx2 = (idx1 + 1) % numPoints;
-    const t = exactIndex - Math.floor(exactIndex);
+    let diff = Math.abs(a2 - a1);
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    diff = Math.abs(diff);
 
-    const p0 = path[idx0];
-    const p1 = path[idx1];
-    const p2 = path[idx2];
-
-    // Smooth quadratic spline point calculation matching curve rendering
-    const mid1X = (p0.x + p1.x) / 2;
-    const mid1Y = (p0.y + p1.y) / 2;
-    const mid2X = (p1.x + p2.x) / 2;
-    const mid2Y = (p1.y + p2.y) / 2;
-
-    const x = ((1 - t) * (1 - t) * mid1X + 2 * (1 - t) * t * p1.x + t * t * mid2X) * width;
-    const y = ((1 - t) * (1 - t) * mid1Y + 2 * (1 - t) * t * p1.y + t * t * mid2Y) * height;
-
-    return { x, y };
+    // Tight corners (large diff) slow car down, straights allow higher top speed
+    const factor = Math.max(0.45, 1.25 - diff * 2.0);
+    return factor;
   },
 
   processOvertakes() {
-    // Sort cars by current distance completed
     const activeCars = this.cars.filter(c => !c.isDNF);
     activeCars.sort((a, b) => (b.lap + b.progress) - (a.lap + a.progress));
 
@@ -428,11 +344,9 @@ const F1Simulator = {
 
       const gap = (ahead.lap + ahead.progress) - (behind.lap + behind.progress);
 
-      // Skill-weighted overtake probability: higher-skilled driver behind has much higher chance to pass
       const skillDiff = behind.skill - ahead.skill;
       const baseOvertakeChance = 0.05 + (skillDiff / 100) * 0.12;
 
-      // Proximity threshold for overtake
       if (gap < 0.006 && !this.safetyCarActive && Math.random() < Math.max(0.01, baseOvertakeChance)) {
         // Perform swap
         const tempProg = ahead.progress;
@@ -447,7 +361,7 @@ const F1Simulator = {
 
   triggerSafetyCar() {
     this.safetyCarActive = true;
-    this.safetyCarLapsRemaining = 2; // 2 laps of SC
+    this.safetyCarLapsRemaining = 2;
     this.logCommentary('⚠️ SAFETY CAR DEPLOYED! Field compressed - No overtaking allowed.', 'incident');
   },
 
@@ -455,105 +369,116 @@ const F1Simulator = {
     const ctx = this.ctx;
     const width = this.canvas.width;
     const height = this.canvas.height;
-    const track = this.tracks[this.trackKey];
 
     ctx.clearRect(0, 0, width, height);
 
-    // Helper to draw smooth organic curves via quadratic spline interpolation
-    const drawSmoothPath = () => {
-      ctx.beginPath();
-      const points = track.path.map(pt => ({ x: pt.x * width, y: pt.y * height }));
-      const len = points.length;
+    const trackObj = this.getTrackPathObj(this.trackKey);
+    if (!trackObj) return;
 
-      const pLast = points[len - 1];
-      const pFirst = points[0];
-      const startMidX = (pLast.x + pFirst.x) / 2;
-      const startMidY = (pLast.y + pFirst.y) / 2;
+    // 1. Draw SVG Track Circuit Path
+    // Outer Asphalt Border (Thick Dark Stroke)
+    ctx.strokeStyle = '#0B0B10';
+    ctx.lineWidth = 26;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke(trackObj.path2d);
 
-      ctx.moveTo(startMidX, startMidY);
-      for (let i = 0; i < len; i++) {
-        const p1 = points[i];
-        const p2 = points[(i + 1) % len];
-        const midX = (p1.x + p2.x) / 2;
-        const midY = (p1.y + p2.y) / 2;
-        ctx.quadraticCurveTo(p1.x, p1.y, midX, midY);
-      }
-      ctx.closePath();
-    };
+    ctx.strokeStyle = '#1F1F2C';
+    ctx.lineWidth = 20;
+    ctx.stroke(trackObj.path2d);
 
-    // 1. Draw Organic Circuit Path Vector Map
-    // Outer Border Accent: Clean, uniform red stroke (#E10600) along track edges
-    drawSmoothPath();
-    ctx.lineWidth = 28;
-    ctx.strokeStyle = '#E10600';
-    ctx.stroke();
+    // Racing Line Surface (Thinner Lighter Stroke)
+    ctx.strokeStyle = '#323246';
+    ctx.lineWidth = 12;
+    ctx.stroke(trackObj.path2d);
 
-    // Track Surface: Solid black fill (#000000)
-    drawSmoothPath();
-    ctx.lineWidth = 22;
-    ctx.strokeStyle = '#000000';
-    ctx.stroke();
-
-    // Track Centerline: Thin, dashed yellow line (#FFFF00) running down middle
-    drawSmoothPath();
+    // Center Red Apex Guide Line
+    ctx.strokeStyle = 'rgba(225, 6, 0, 0.4)';
     ctx.lineWidth = 2;
-    ctx.strokeStyle = '#FFFF00';
     ctx.setLineDash([8, 8]);
-    ctx.stroke();
-    ctx.setLineDash([]); // Reset dash pattern
+    ctx.stroke(trackObj.path2d);
+    ctx.setLineDash([]); // Reset line dash
 
-    // Safety Car Indicator Line overlay (Yellow warning outline when SC is active)
+    // Safety Car Yellow Outline overlay
     if (this.safetyCarActive) {
-      drawSmoothPath();
-      ctx.lineWidth = 4;
       ctx.strokeStyle = '#FFCC00';
-      ctx.stroke();
+      ctx.lineWidth = 4;
+      ctx.stroke(trackObj.path2d);
     }
 
-    // Start/Finish Line Ribbon
-    const startPt = track.path[0];
-    ctx.beginPath();
-    ctx.arc(startPt.x * width, startPt.y * height, 16, 0, 2 * Math.PI);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-    ctx.fill();
+    // 2. Start / Finish Line
+    const startPt = trackObj.el.getPointAtLength(0);
+    const startPtAhead = trackObj.el.getPointAtLength(4);
+    const startAngle = Math.atan2(startPtAhead.y - startPt.y, startPtAhead.x - startPt.x);
 
-    // 2. Draw Driver Physics Dots
+    ctx.save();
+    ctx.translate(startPt.x, startPt.y);
+    ctx.rotate(startAngle + Math.PI / 2);
+    // Draw Checkered Start / Finish Bar
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(-12, -3, 24, 6);
+    ctx.fillStyle = '#E10600';
+    ctx.fillRect(-12, -1, 24, 2);
+    ctx.restore();
+
+    // 3. Move Cars Along Path using path.getPointAtLength() & Rotate to Travel Direction
     this.cars.forEach((car) => {
       if (car.isDNF) return;
 
-      const coords = this.getCanvasCoords(car.progress, track);
+      const dist = (car.progress % 1) * trackObj.length;
+      const p = trackObj.el.getPointAtLength(dist);
+      const delta = 2;
+      const pAhead = trackObj.el.getPointAtLength((dist + delta) % trackObj.length);
+      const angle = Math.atan2(pAhead.y - p.y, pAhead.x - p.x);
 
-      // Halo Outer Glow
+      // Render Sleek Car Body
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(angle);
+
+      // Outer Glow
       ctx.beginPath();
-      ctx.arc(coords.x, coords.y, 11, 0, 2 * Math.PI);
+      ctx.arc(0, 0, 9, 0, 2 * Math.PI);
       ctx.fillStyle = car.color;
       ctx.globalAlpha = 0.35;
       ctx.fill();
-
-      // Main Solid Car Dot
-      ctx.beginPath();
-      ctx.arc(coords.x, coords.y, 7, 0, 2 * Math.PI);
-      ctx.fillStyle = car.color;
       ctx.globalAlpha = 1.0;
+
+      // Car Main Body
+      ctx.fillStyle = car.color;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(-7, -4, 14, 8, 2);
+      } else {
+        ctx.rect(-7, -4, 14, 8);
+      }
       ctx.fill();
-      ctx.lineWidth = 2;
       ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // Driver Initial Badge Label
+      // Front Wing Tip
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 9px sans-serif';
+      ctx.fillRect(5, -3, 3, 6);
+
+      ctx.restore();
+
+      // Show 3-letter Driver Label next to car
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 10px "Chakra Petch", sans-serif';
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const initials = car.driverName.substring(0, 2).toUpperCase();
-      ctx.fillText(initials, coords.x, coords.y);
+      ctx.textBaseline = 'bottom';
+      ctx.shadowColor = '#000000';
+      ctx.shadowBlur = 4;
+      ctx.fillText(car.driverCode, p.x, p.y - 8);
+      ctx.shadowBlur = 0; // Reset shadow
     });
 
-    // 3. Update UI Telemetry Banner
+    // 4. Update UI Telemetry Banner
     document.getElementById('telemetry-current-lap').textContent = Math.min(this.currentLap, this.totalLaps);
     document.getElementById('telemetry-total-laps').textContent = this.totalLaps;
 
-    // 4. Update Live Broadcast Leaderboard
+    // 5. Update Live Broadcast Leaderboard
     this.updateLeaderboardUI();
   },
 
@@ -568,6 +493,7 @@ const F1Simulator = {
     });
 
     const leader = sortedCars[0];
+    const baseLapTime = this.trackBaseLapTimes[this.trackKey] || 80.0;
 
     sortedCars.forEach((car, index) => {
       const tr = document.createElement('tr');
@@ -590,7 +516,7 @@ const F1Simulator = {
         gapTd.style.color = '#00E676';
       } else {
         const gapDist = (leader.lap + leader.progress) - (car.lap + car.progress);
-        const gapSec = (gapDist * this.tracks[this.trackKey].baseLapTime).toFixed(1);
+        const gapSec = (gapDist * baseLapTime).toFixed(1);
         gapTd.textContent = `+${gapSec}s`;
       }
 
@@ -615,6 +541,7 @@ const F1Simulator = {
 
   logCommentary(text, type = 'normal') {
     const feed = document.getElementById('commentary-feed');
+    if (!feed) return;
     const div = document.createElement('div');
     div.className = `feed-item ${type}`;
     div.textContent = text;
@@ -665,7 +592,6 @@ const F1Simulator = {
 
     finalClassification.forEach((car, index) => {
       let points = index < this.pointsScale.length ? this.pointsScale[index] : 0;
-      // Fastest lap bonus (+1 pt if in top 10)
       if (car === fastestLapDriver && index < 10) {
         points += 1;
         car.hasFastestLap = true;
@@ -680,7 +606,6 @@ const F1Simulator = {
       const playerDrivers = finalClassification.filter(c => c.playerName === player.name);
       const totalPoints = playerDrivers.reduce((sum, d) => sum + d.pointsAwarded, 0);
 
-      // Best individual driver position among player's roster
       const driverPositions = playerDrivers.map(d => finalClassification.indexOf(d) + 1);
       const bestFinish = driverPositions.length > 0 ? Math.min(...driverPositions) : 999;
 
@@ -695,7 +620,7 @@ const F1Simulator = {
       };
     });
 
-    // Sort Team Champions strictly with Tie-Breaker Rules:
+    // Sort Team Champions with Tie-Breaker Rules:
     // 1) Total Points (descending)
     // 2) Highest single-driver finish (best position ascending)
     // 3) Remaining budget (descending)
@@ -714,7 +639,6 @@ const F1Simulator = {
     // 4. Populate Results Overlay & Physical Podium Slots
     document.getElementById('champion-announcement').textContent = `${winningPlayer.playerName.toUpperCase()} WINS THE F1 DRAFT! 🏆`;
 
-    // Populate Podium P1, P2, P3 Slot text
     const p1Team = teamScores[0] || { playerName: '--', totalPoints: 0 };
     const p2Team = teamScores[1] || { playerName: '--', totalPoints: 0 };
     const p3Team = teamScores[2] || { playerName: '--', totalPoints: 0 };
@@ -757,14 +681,12 @@ const F1Simulator = {
       driverTbody.appendChild(tr);
     });
 
-    // Show Victory Modal & Trigger Kahoot-Style Sequential Rising Podium (No Spotlight)
+    // Show Victory Modal & Trigger Kahoot-Style Sequential Rising Podium
     document.getElementById('results-modal').classList.remove('hidden');
 
-    // Reset initial hidden state for all podium blocks & info cards
     document.querySelectorAll('.podium-block').forEach(b => b.classList.remove('raised'));
     document.querySelectorAll('.podium-driver-info').forEach(i => i.classList.remove('revealed'));
 
-    // PHASE 1 (3rd Place Reveal): P3 rises and locks into position
     setTimeout(() => {
       const p3Block = document.querySelector('.p3-block');
       const p3Info = document.querySelector('#podium-slot-p3 .podium-driver-info');
@@ -772,7 +694,6 @@ const F1Simulator = {
       if (p3Info) p3Info.classList.add('revealed');
     }, 300);
 
-    // PHASE 2 (2nd Place Reveal): P2 rises and locks into position
     setTimeout(() => {
       const p2Block = document.querySelector('.p2-block');
       const p2Info = document.querySelector('#podium-slot-p2 .podium-driver-info');
@@ -780,14 +701,12 @@ const F1Simulator = {
       if (p2Info) p2Info.classList.add('revealed');
     }, 1200);
 
-    // PHASE 3 (1st Place Champion Reveal): Tall central P1 champion pillar rises, reveals champion name, trophy & confetti
     setTimeout(() => {
       const p1Block = document.querySelector('.p1-block');
       const p1Info = document.querySelector('#podium-slot-p1 .podium-driver-info');
       if (p1Block) p1Block.classList.add('raised');
       if (p1Info) p1Info.classList.add('revealed');
 
-      // Particle Confetti Burst
       this.launchConfetti();
     }, 2200);
   },
@@ -816,7 +735,7 @@ const F1Simulator = {
       });
     }
 
-    let duration = 180; // 3 seconds at 60fps
+    let duration = 180;
     const renderConfetti = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
