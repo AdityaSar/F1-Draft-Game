@@ -311,11 +311,30 @@ const F1Simulator = {
       document.getElementById('telemetry-weather-indicator').textContent = '🌧️ WET';
       this.logCommentary('🌧️ RAIN STARTED! Automated pit stops triggered for wet tyres!', 'system');
 
-      // Trigger 2-second pit stop animation for active cars
+      // Trigger variable pit stop durations (Fast 10%: 2s, Standard 80%: 2.6s, Slow 10%: 4.8s)
       this.cars.forEach(car => {
         if (!car.isDNF) {
           car.isPitStopping = true;
-          setTimeout(() => { car.isPitStopping = false; }, 2000 / this.simSpeed);
+          const pitRoll = Math.random();
+          let pitDuration = 2600; // Standard 2.6s
+          let pitType = 'STANDARD';
+
+          if (pitRoll < 0.10) {
+            pitDuration = 2000; // Fast 2.0s
+            pitType = 'FAST';
+          } else if (pitRoll > 0.90) {
+            pitDuration = 4800; // Slow 4.8s
+            pitType = 'SLOW';
+            this.logCommentary(`⚠️ SLOW PIT STOP FOR ${car.driverName}! Sticky wheel nut costs ${car.playerName} 4.8s!`, 'incident');
+          }
+
+          car.pitTimerText = `${(pitDuration / 1000).toFixed(1)}s (${pitType})`;
+          car.tireHaloColor = '#00F0FF'; // Blue Wets
+
+          setTimeout(() => {
+            car.isPitStopping = false;
+            car.pitTimerText = null;
+          }, pitDuration / this.simSpeed);
         }
       });
     }
@@ -543,11 +562,83 @@ const F1Simulator = {
     ctx.strokeStyle = '#E10600';
     ctx.stroke();
 
-    // Track Surface: Solid black fill (#000000)
+    // Track Base Asphalt
     drawSmoothPath();
     ctx.lineWidth = 22;
     ctx.strokeStyle = '#000000';
     ctx.stroke();
+
+    // Render Alternating Red-and-White Apex Kerbs (Rumble Strips)
+    track.path.forEach((pt, i) => {
+      if (pt.type === 'corner') {
+        const x = pt.x * width;
+        const y = pt.y * height;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, 16, 0, Math.PI * 2);
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = (i % 2 === 0) ? '#E10600' : '#FFFFFF';
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    });
+
+    // Draw Start/Finish Line Arch & Starting Grid Slots (P1, P2, P3...)
+    const startPt = track.path[0];
+    const sfX = startPt.x * width;
+    const sfY = startPt.y * height;
+
+    // Render Pit Lane & Pit Box Area (#FFCC00 outline with hazard stripes)
+    const pitX = sfX - 35;
+    const pitY = sfY + 25;
+
+    ctx.fillStyle = 'rgba(255, 204, 0, 0.15)';
+    ctx.strokeStyle = '#FFCC00';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.fillRect(pitX - 20, pitY - 8, 40, 16);
+    ctx.strokeRect(pitX - 20, pitY - 8, 40, 16);
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#FFCC00';
+    ctx.font = 'bold 8px "Orbitron", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PIT BOX', pitX, pitY + 16);
+
+    ctx.beginPath();
+    ctx.arc(sfX, sfY, 16, 0, 2 * Math.PI);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.fill();
+
+    // Grid Slot Markings (P1, P2, P3...)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.font = 'bold 9px "Orbitron", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('FINISH', sfX, sfY - 20);
+
+    // Sector Split Lines (S1, S2, S3)
+    const numPoints = track.path.length;
+    const s1Idx = Math.floor(numPoints * 0.33);
+    const s2Idx = Math.floor(numPoints * 0.66);
+
+    [s1Idx, s2Idx].forEach((sIdx, idx) => {
+      const sPt = track.path[sIdx];
+      const sx = sPt.x * width;
+      const sy = sPt.y * height;
+
+      ctx.beginPath();
+      ctx.arc(sx, sy, 10, 0, Math.PI * 2);
+      ctx.strokeStyle = '#00F0FF';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = '#00F0FF';
+      ctx.font = 'bold 8px "Orbitron", sans-serif';
+      ctx.fillText(`S${idx + 1}`, sx, sy - 12);
+    });
 
     // Render Highlighted DRS Zones
     if (track.drsZones && track.drsZones.length > 0) {
@@ -604,17 +695,50 @@ const F1Simulator = {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
     ctx.fill();
 
-    // 2. Draw Driver Physics Dots
+    // 2. Draw Driver Physics Dots, Dynamic Particles, & High-Tech Car HUDs
     this.cars.forEach((car) => {
       if (car.isDNF) return;
 
       const coords = this.getCanvasCoords(car.progress, track);
+      const inDRS = this.isCarInDRSZone(car.progress, track);
+
+      // Dynamic Particle FX
+      if (inDRS && Math.random() < 0.4) {
+        // DRS Cyan Slipstream Airflow Trails (#00F0FF)
+        ctx.beginPath();
+        ctx.arc(coords.x - 10, coords.y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.6)';
+        ctx.fill();
+      }
+
+      if (car.lockUpTimer > 0) {
+        // Heavy Braking White Smoke Particles (#FFFFFF)
+        ctx.beginPath();
+        ctx.arc(coords.x + (Math.random() * 8 - 4), coords.y + (Math.random() * 8 - 4), 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fill();
+      }
+
+      // High-Speed Orange Sparks on Straightaway Top Speeds
+      const waypoint = this.getSegmentWaypoint(car.progress, track);
+      if (waypoint.type === 'straight' && Math.random() < 0.25) {
+        ctx.beginPath();
+        ctx.arc(coords.x + (Math.random() * 6 - 3), coords.y + 4, 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#FF9900';
+        ctx.fill();
+      }
+
+      // Status Halo: Green = DRS Active, Yellow = Safety Car, Red = Lock-Up/Slow Stop
+      let haloColor = car.color;
+      if (inDRS) haloColor = '#00FF66';
+      else if (this.safetyCarActive) haloColor = '#FFCC00';
+      else if (car.lockUpTimer > 0 || car.isPitStopping) haloColor = '#FF0075';
 
       // Halo Outer Glow
       ctx.beginPath();
-      ctx.arc(coords.x, coords.y, 11, 0, 2 * Math.PI);
-      ctx.fillStyle = car.color;
-      ctx.globalAlpha = 0.35;
+      ctx.arc(coords.x, coords.y, 12, 0, 2 * Math.PI);
+      ctx.fillStyle = haloColor;
+      ctx.globalAlpha = 0.4;
       ctx.fill();
 
       // Main Solid Car Dot
@@ -634,6 +758,21 @@ const F1Simulator = {
       ctx.textBaseline = 'middle';
       const initials = car.driverName.substring(0, 2).toUpperCase();
       ctx.fillText(initials, coords.x, coords.y);
+
+      // Telemetry Floating HUD Badge (Short code + Speed e.g. "VER 320 KM/H")
+      const shortCode = car.driverName.substring(0, 3).toUpperCase();
+      const speedKm = Math.round(280 + (car.skill / 100) * 45);
+
+      ctx.fillStyle = 'rgba(6, 7, 17, 0.85)';
+      ctx.strokeStyle = haloColor;
+      ctx.lineWidth = 1;
+      ctx.fillRect(coords.x - 28, coords.y - 24, 56, 12);
+      ctx.strokeRect(coords.x - 28, coords.y - 24, 56, 12);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 7px "Orbitron", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${shortCode} ${speedKm}KPH`, coords.x, coords.y - 18);
     });
 
     // 3. Update UI Telemetry Banner

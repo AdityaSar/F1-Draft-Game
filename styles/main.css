@@ -982,6 +982,36 @@ body {
   object-fit: contain;
 }
 
+/* Broadcast TV Ticker Banner & Timing Tower Styling */
+.ticker-banner {
+  background: rgba(15, 18, 35, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-cyan);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+}
+
+.ticker-tag {
+  background: var(--f1-red);
+  color: #FFFFFF;
+  font-size: 0.75rem;
+  font-weight: 900;
+  padding: 3px 8px;
+  letter-spacing: 1px;
+  transform: skewX(-12deg);
+}
+
+.ticker-msg {
+  color: var(--cyan-neon);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
 /* Broadcast Sidebar */
 .sim-sidebar {
   display: flex;
