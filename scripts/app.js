@@ -51,12 +51,21 @@ const F1App = {
     return { name, skill };
   },
 
-  // Navigation Controller
+  // Navigation Controller with Alias Map
   navigateTo(screenId) {
+    // Map navigation aliases to canonical DOM element IDs
+    const aliasMap = {
+      'simulator-screen': 'screen-sim',
+      'draft-screen': 'screen-auction',
+      'setup-screen': 'screen-setup',
+      'landing-screen': 'screen-landing'
+    };
+    const targetId = aliasMap[screenId] || screenId;
+
     document.querySelectorAll('.screen').forEach(screen => {
       screen.classList.remove('active');
     });
-    const target = document.getElementById(screenId);
+    const target = document.getElementById(targetId);
     if (target) {
       target.classList.add('active');
       window.scrollTo(0, 0);
