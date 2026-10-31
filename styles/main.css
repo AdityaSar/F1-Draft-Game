@@ -887,6 +887,19 @@ body {
   border-color: var(--f1-red);
 }
 
+.btn-qualy {
+  background: #1F1F2C;
+  border-color: #FFD700;
+  color: #FFD700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+.btn-qualy:hover:not(:disabled) {
+  background: #FFD700;
+  color: #000;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+}
+
 .speed-buttons {
   display: flex;
   gap: 4px;

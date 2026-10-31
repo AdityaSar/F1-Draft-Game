@@ -351,6 +351,8 @@ const F1Simulator = {
 
   // Sim State
   isPlaying: false,
+  hasRunQualifying: false,
+  raceStarted: false,
   simSpeed: 1, // 1x, 5x, 20x, 50x
   currentLap: 1,
   totalLaps: 20,
@@ -416,18 +418,77 @@ const F1Simulator = {
     return this.pathCache[trackKey];
   },
 
+  /**
+   * Pure-data Qualifying Calculation.
+   * Defensive: Computes each driver's lap time as:
+   * base time - (skill bonus) + small random variation (tight for high skill, looser for low skill).
+   * Returns sorted array of cars with qualyLapTime.
+   * If error occurs, falls back to sorting by skill descending and logs console.warn.
+   */
+  computeQualifying(carsList, baseLapTime) {
+    try {
+      if (!Array.isArray(carsList) || carsList.length === 0) {
+        return [];
+      }
+      const base = Number.isFinite(baseLapTime) && baseLapTime > 0 ? baseLapTime : 80.0;
+
+      carsList.forEach(car => {
+        const skill = Math.max(1, Math.min(100, Number(car.skill) || 50));
+        // Skill bonus: scales up to ~2.5s advantage for 100 skill
+        const skillBonus = (skill / 100) * 2.5;
+
+        // Variance: high skill (e.g. 95) gets very tight variance (+/- 0.08s)
+        // low skill (e.g. 50) gets looser variance (+/- 0.35s)
+        const spread = (100 - skill) * 0.005 + 0.05;
+        const randomVariation = (Math.random() * 2 - 1) * spread;
+
+        const qualyTime = parseFloat((base - skillBonus + randomVariation).toFixed(3));
+        car.qualyLapTime = qualyTime;
+        car.qualyTime = qualyTime;
+      });
+
+      // Sort strictly by fastest lap time ascending
+      carsList.sort((a, b) => a.qualyLapTime - b.qualyLapTime);
+
+      return carsList;
+    } catch (err) {
+      console.warn('Qualifying computation encountered an error, falling back to skill order:', err);
+      // Fallback: sort by skill descending
+      try {
+        carsList.sort((a, b) => (b.skill || 0) - (a.skill || 0));
+        const base = baseLapTime || 80.0;
+        carsList.forEach((c, idx) => {
+          c.qualyLapTime = parseFloat((base + idx * 0.15).toFixed(3));
+          c.qualyTime = c.qualyLapTime;
+        });
+      } catch (innerErr) {
+        console.warn('Fallback sorting error:', innerErr);
+      }
+      return carsList;
+    }
+  },
+
   initSimulator() {
     this.canvas = document.getElementById('sim-canvas');
     this.ctx = this.canvas.getContext('2d');
 
     // Reset Sim State
     this.isPlaying = false;
+    this.hasRunQualifying = false;
+    this.raceStarted = false;
     this.simSpeed = 1;
     this.currentLap = 1;
     this.safetyCarActive = false;
     this.safetyCarLapsRemaining = 0;
     this.fastestLap = { time: Infinity, driverName: null, carId: null };
     this.commentaryLogs = [];
+
+    // Ensure Start Qualifying button is visible before race starts
+    const qualyBtn = document.getElementById('btn-sim-qualifying');
+    if (qualyBtn) {
+      qualyBtn.style.display = 'inline-block';
+      qualyBtn.onclick = () => this.runQualifying(true);
+    }
 
     // Dynamically populate track selector dropdown from SIM_CONFIG.TRACKS
     this.populateTrackDropdown();
@@ -465,6 +526,14 @@ const F1Simulator = {
         }
       });
     });
+
+    const closeQualyBtn = document.getElementById('btn-close-qualifying');
+    if (closeQualyBtn) {
+      closeQualyBtn.onclick = () => {
+        const modal = document.getElementById('qualifying-modal');
+        if (modal) modal.classList.add('hidden');
+      };
+    }
 
     document.getElementById('btn-sim-play').onclick = () => this.play();
     document.getElementById('btn-sim-pause').onclick = () => this.pause();
@@ -555,21 +624,99 @@ const F1Simulator = {
       });
     }
 
-    // Sort grid strictly by qualifying times
-    this.cars.sort((a, b) => a.qualyTime - b.qualyTime);
+    // Initial skill sort before qualifying is run
+    this.cars.sort((a, b) => b.skill - a.skill);
+    this.applyGridFormation();
+  },
 
-    // Initial grid positions and staggered gaps
+  /**
+   * Staggered 2-column grid formation logic:
+   * P1 pole position, P2 slightly behind on opposite side of track, P3 behind P1, etc.
+   * Staggered longitudinally along circuit progress and staggered laterally across track width.
+   */
+  applyGridFormation() {
     this.cars.forEach((car, index) => {
       car.gridPos = index + 1;
-      car.gapToLeader = index * 0.35; // 0.35s gap between grid slots
-      car.progress = Math.max(0, 0.03 - index * 0.005);
+      car.gapToLeader = index * 0.35;
+      // Stagger rows along the starting grid:
+      // Row 0 (P1, P2), Row 1 (P3, P4)...
+      const row = Math.floor(index / 2);
+      const isLeft = (index % 2 === 0); // P1, P3, P5 on inside/pole side; P2, P4, P6 on outside
+
+      // Staggered forward positions: P1 is furthest forward, P2 is half a slot behind, P3 is a full row behind
+      const longitudinalOffset = 0.025 - (row * 0.007) - (isLeft ? 0 : 0.0035);
+      car.progress = Math.max(0.0001, longitudinalOffset);
       car.totalDistanceLaps = car.progress;
+
+      // Lateral offset perpendicular to track line (-4px for left/pole, +4px for right/outside)
+      car.lateralOffset = isLeft ? -4.5 : 4.5;
+    });
+  },
+
+  runQualifying(showResultsModal = true) {
+    if (this.raceStarted) return;
+
+    const trackInfo = SIM_CONFIG.TRACKS[this.trackKey] || SIM_CONFIG.TRACKS.monza;
+    const baseLapTime = trackInfo.baseLapTime || 80.0;
+
+    // Pure data computation
+    this.computeQualifying(this.cars, baseLapTime);
+
+    // Apply staggered 2-column grid formation with new order
+    this.applyGridFormation();
+    this.hasRunQualifying = true;
+
+    // Render results in table
+    this.populateQualifyingModal();
+
+    const poleSitter = this.cars[0];
+    this.logCommentary(`🏁 QUALIFYING COMPLETE: ${poleSitter ? poleSitter.driverName : 'Leader'} takes POLE with a ${poleSitter ? poleSitter.qualyLapTime.toFixed(3) : ''}s!`, 'system');
+
+    this.renderFrame();
+
+    if (showResultsModal) {
+      const modal = document.getElementById('qualifying-modal');
+      if (modal) modal.classList.remove('hidden');
+    }
+  },
+
+  populateQualifyingModal() {
+    const tbody = document.getElementById('qualifying-results-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const poleTime = this.cars.length > 0 && this.cars[0].qualyLapTime ? this.cars[0].qualyLapTime : 0;
+
+    this.cars.forEach((car, index) => {
+      const tr = document.createElement('tr');
+      const gapStr = index === 0 ? 'POLE' : `+${(car.qualyLapTime - poleTime).toFixed(3)}s`;
+
+      tr.innerHTML = `
+        <td><strong>P${index + 1}</strong></td>
+        <td><span class="badge-tag" style="background-color: ${car.color}; color:#FFF;">•</span><strong>${car.driverName}</strong></td>
+        <td>${car.playerName}</td>
+        <td><strong style="color: ${index === 0 ? '#FFD700' : '#FFF'};">${car.qualyLapTime ? car.qualyLapTime.toFixed(3) + 's' : 'N/A'}</strong></td>
+        <td style="color: ${index === 0 ? '#00E676' : 'var(--text-secondary)'}; font-family: monospace;">${gapStr}</td>
+      `;
+      tbody.appendChild(tr);
     });
   },
 
   play() {
     if (this.isPlaying) return;
+
+    // Defensive requirement #5: If user skips qualifying and clicks Start Race, auto-run it first
+    if (!this.hasRunQualifying) {
+      this.runQualifying(false);
+    }
+
     this.isPlaying = true;
+    this.raceStarted = true;
+
+    // Hide Start Qualifying button once race has started
+    const qualyBtn = document.getElementById('btn-sim-qualifying');
+    if (qualyBtn) qualyBtn.style.display = 'none';
+
     document.getElementById('btn-sim-play').classList.add('btn-active');
     document.getElementById('btn-sim-pause').classList.remove('btn-active');
     document.getElementById('sim-status-badge').textContent = 'RACE IN PROGRESS';
@@ -591,6 +738,13 @@ const F1Simulator = {
   resetSimulation() {
     this.pause();
     this.currentLap = 1;
+    this.hasRunQualifying = false;
+    this.raceStarted = false;
+
+    // Show Start Qualifying button on reset
+    const qualyBtn = document.getElementById('btn-sim-qualifying');
+    if (qualyBtn) qualyBtn.style.display = 'inline-block';
+
     const trackMeta = SIM_CONFIG.TRACKS[this.trackKey];
     this.totalLaps = trackMeta && trackMeta.laps ? trackMeta.laps : 15;
     this.safetyCarActive = false;
@@ -954,10 +1108,21 @@ const F1Simulator = {
       if (car.isDNF) return;
 
       const dist = (car.progress % 1) * trackObj.length;
-      const p = trackObj.el.getPointAtLength(dist);
+      let p = trackObj.el.getPointAtLength(dist);
       const delta = 2;
       const pAhead = trackObj.el.getPointAtLength((dist + delta) % trackObj.length);
       const angle = Math.atan2(pAhead.y - p.y, pAhead.x - p.x);
+
+      // Apply staggered grid lateral offset if not yet racing (or smoothly converge to racing line)
+      if (!this.raceStarted && car.lateralOffset) {
+        // Normal vector perpendicular to path tangent
+        const nx = -Math.sin(angle);
+        const ny = Math.cos(angle);
+        p = {
+          x: p.x + nx * car.lateralOffset,
+          y: p.y + ny * car.lateralOffset
+        };
+      }
 
       ctx.save();
       ctx.translate(p.x, p.y);

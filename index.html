@@ -214,7 +214,8 @@
         </div>
 
         <div class="sim-control-item btn-group">
-          <button id="btn-sim-play" class="btn-sim-ctrl btn-active">PLAY</button>
+          <button id="btn-sim-qualifying" class="btn-sim-ctrl btn-qualy">START QUALIFYING</button>
+          <button id="btn-sim-play" class="btn-sim-ctrl btn-active">START RACE</button>
           <button id="btn-sim-pause" class="btn-sim-ctrl">PAUSE</button>
         </div>
 
@@ -272,6 +273,42 @@
           </div>
           <div id="commentary-feed" class="commentary-feed">
             <div class="feed-item system">System: Simulation ready. Click Play to start the Grand Prix!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUALIFYING RESULTS MODAL -->
+    <div id="qualifying-modal" class="modal-overlay hidden">
+      <div class="modal-card modal-large modal-scrollable">
+        <div class="modal-card-inner">
+          <div class="modal-header">
+            <span class="modal-tag">OFFICIAL QUALIFYING CLASSIFICATION</span>
+            <h2 class="driver-spotlight" style="font-size: 1.8rem;">STARTING GRID</h2>
+          </div>
+
+          <div class="table-responsive max-height-300">
+            <table class="f1-table compact-table" id="qualifying-results-table">
+              <thead>
+                <tr>
+                  <th>GRID</th>
+                  <th>DRIVER</th>
+                  <th>PLAYER</th>
+                  <th>BEST LAP</th>
+                  <th>GAP</th>
+                </tr>
+              </thead>
+              <tbody id="qualifying-results-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="modal-actions mt-20">
+            <button type="button" id="btn-close-qualifying" class="btn-primary btn-full">
+              <span>CONFIRM GRID & CONTINUE</span>
+              <span class="cta-arrow">➔</span>
+            </button>
           </div>
         </div>
       </div>
