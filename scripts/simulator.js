@@ -31,9 +31,10 @@ const SIM_CONFIG = {
   // Base overtaking chance scaling
   OVERTAKE_GAP_THRESHOLD_SECONDS: 1.0,
 
-  // Base incident / DNF probability per lap
-  DRY_DNF_CHANCE_PER_LAP: 0.008,
-  WET_DNF_CHANCE_PER_LAP: 0.022,
+  // DNF constants (Part 2)
+  DNF_CHANCE_PER_CAR_PER_RACE: 0.05,
+  MAX_DNFS_NORMAL: 2,
+  THIRD_DNF_CHANCE: 0.05,
 
   // Safety Car chance on incident
   SC_TRIGGER_CHANCE_ON_DNF: 0.85,
@@ -378,7 +379,8 @@ const F1Simulator = {
 
   // Rate-limited commentary queue
   commentaryQueue: [],
-  lastCommentaryPostTime: 0,
+  simulatedTimeSeconds: 0,
+  lastCommentarySimTime: -999,
   commentaryTimerId: null,
 
   // Fastest lap holder
@@ -644,7 +646,8 @@ const F1Simulator = {
     this.fastestLap = { time: Infinity, driverName: null, carId: null };
     this.commentaryLogs = [];
     this.commentaryQueue = [];
-    this.lastCommentaryPostTime = 0;
+    this.simulatedTimeSeconds = 0;
+    this.lastCommentarySimTime = -999;
     this.startCommentaryProcessor();
 
     // Ensure Start Qualifying button is visible before race starts
@@ -826,6 +829,7 @@ const F1Simulator = {
             bestLap: null,
             isDNF: false,
             dnfReason: null,
+            lapsCompleted: 0,
 
             // Tyres & Fuel
             tyreCompound: startingCompound,
@@ -849,28 +853,37 @@ const F1Simulator = {
   },
 
   /**
-   * Staggered 2-column grid formation logic:
-   * 1. The start/finish line is at path distance 0 of each track's SVG path.
-   * 2. Cars must start BEHIND the line, on the path just before it:
-   *    P1 at distance (pathLength - 8px), P2 at (pathLength - 24px), P3 at (pathLength - 40px)...
-   *    Formula: dist = (pathLength - (8 + index * 16))
-   *    Using modulo so negative distances wrap correctly:
-   *    car.distance = ((dist % pathLength) + pathLength) % pathLength;
-   *    car.totalDistance = -(8 + index * 16);
-   *    Alternating left and right of the centerline by a few pixels for a staggered two-column grid.
-   * 3. Lap 1 begins at the grid; crossing the start/finish line (multiple of pathLength) starts Lap 2.
+   * Staggered 2-column grid formation logic (Part 4):
+   * - gridSlotSpacing = min(16px, (pathLength * 0.06) / ceil(numCars / 2)).
+   *   The whole grid must fit within 6% of the lap length.
+   * - Two-column staggered formation: odd positions (P1, P3, P5...) on the right (+3.5px),
+   *   even positions (P2, P4, P6...) on the left (-3.5px), a few px either side of the centerline.
+   * - P1 / P2 right behind the start line.
+   *   Row 0: P1 (offset ~ 5px), P2 (offset ~ 5px + half slot or same row staggered).
+   *   row = Math.floor(index / 2).
+   *   offsetBehindLine = 5 + (row * gridSlotSpacing) + (isRight ? 0 : gridSlotSpacing * 0.4).
+   * - Everyone launches at the same lights-out moment with the same launch model,
+   *   plus a small random reaction time (+-0.15s). Cars at back do not start slower or later.
    */
   applyGridFormation() {
     const trackObj = this.getTrackPathObj(this.trackKey);
     const pathLength = trackObj ? trackObj.length : 1000;
+    const numCars = this.cars.length;
+    const numRows = Math.max(1, Math.ceil(numCars / 2));
+
+    // Dynamic grid slot spacing: fits entire grid in 6% of lap length
+    const gridSlotSpacing = Math.min(16, (pathLength * 0.06) / numRows);
 
     this.cars.forEach((car, index) => {
-      car.gridPos = index + 1;
-      car.gapToLeader = index * 0.35;
-      const isLeft = (index % 2 === 0); // P1, P3, P5 on inside/pole side; P2, P4, P6 on outside
+      car.gridPos = index + 1; // P1, P2, P3...
+      car.gapToLeader = index * 0.2;
 
-      // Exact pixel distance offset behind the line
-      const offsetBehindLine = 8 + (index * 16);
+      // Odd positions (P1, P3, P5, ...) on the right (+3.5px), even (P2, P4, P6, ...) on the left (-3.5px)
+      const isOddPos = (index % 2 === 0); // index 0 is P1 (odd), index 1 is P2 (even)
+      const row = Math.floor(index / 2);
+
+      // P1/P2 right behind the start line (~5px). Stagger even cars slightly back by half slot
+      const offsetBehindLine = 5 + (row * gridSlotSpacing) + (isOddPos ? 0 : (gridSlotSpacing * 0.45));
       const rawDist = pathLength - offsetBehindLine;
       const wrappedDist = ((rawDist % pathLength) + pathLength) % pathLength;
 
@@ -885,8 +898,11 @@ const F1Simulator = {
       // Lap 1 begins on the grid
       car.lap = 1;
 
-      // Lateral offset perpendicular to track line (-4.5px left/pole, +4.5px right/outside)
-      car.lateralOffset = isLeft ? -4.5 : 4.5;
+      // Lateral offset: odd on right (+3.5px), even on left (-3.5px)
+      car.lateralOffset = isOddPos ? 3.5 : -3.5;
+
+      // Launch reaction time (+-0.15s): all cars launch at lights-out
+      car.reactionDelay = (Math.random() * 0.30 - 0.15); // in seconds
     });
   },
 
@@ -984,7 +1000,8 @@ const F1Simulator = {
     this.fastestLap = { time: Infinity, driverName: null, carId: null };
     this.commentaryLogs = [];
     this.commentaryQueue = [];
-    this.lastCommentaryPostTime = 0;
+    this.simulatedTimeSeconds = 0;
+    this.lastCommentarySimTime = -999;
 
     // Show Start Qualifying button on reset
     const qualyBtn = document.getElementById('btn-sim-qualifying');
@@ -1063,6 +1080,13 @@ const F1Simulator = {
     const trackObj = this.getTrackPathObj(this.trackKey);
     if (!trackObj) return;
 
+    // Track simulated time (dt = 1/60 * simSpeed seconds per physics frame)
+    const dtSeconds = (1 / 60) * this.simSpeed;
+    this.simulatedTimeSeconds += dtSeconds;
+
+    // Check queued commentary against simulated time
+    this.drainCommentaryQueue();
+
     // Base nominal frame progress
     const baseLapDurationSeconds = trackInfo.baseLapTime;
     const baseFrameDelta = (1 / (baseLapDurationSeconds * 60)) * this.simSpeed;
@@ -1115,7 +1139,15 @@ const F1Simulator = {
       }
 
       // Advance car progress continuously along path
-      const frameAdvance = baseFrameDelta * speedFactor;
+      // Same launch model for all cars at lights-out, plus a small random reaction delay (+-0.15s)
+      let launchFactor = 1.0;
+      if (this.simulatedTimeSeconds < 1.0) {
+        // First second from lights out: smooth launch acceleration curve
+        const effectiveT = Math.max(0, this.simulatedTimeSeconds - (car.reactionDelay || 0));
+        launchFactor = Math.min(1.0, 0.4 + effectiveT * 0.6);
+      }
+
+      const frameAdvance = baseFrameDelta * speedFactor * launchFactor;
       const prevTotalDist = car.totalDistance !== undefined ? car.totalDistance : (car.totalDistanceLaps * trackObj.length);
       const newTotalDist = prevTotalDist + (frameAdvance * trackObj.length);
       car.totalDistance = newTotalDist;
@@ -1144,6 +1176,7 @@ const F1Simulator = {
       const currentLapNumber = Math.floor(newTotalDist / trackObj.length) + 2;
       if (currentLapNumber > car.lap) {
         const completedLapNum = car.lap;
+        car.lapsCompleted = completedLapNum;
         car.lap = currentLapNumber;
 
         const completedLapTime = theoreticalPace + (Math.random() * 0.3 - 0.15);
@@ -1161,17 +1194,45 @@ const F1Simulator = {
           this.logCommentary(`🟣 FASTEST LAP: ${car.driverName} sets a ${completedLapTime.toFixed(3)}s!`, 'system');
         }
 
-        // Random DNF Incident Chance
-        const dnfChance = this.weather === 'wet' ? SIM_CONFIG.WET_DNF_CHANCE_PER_LAP : SIM_CONFIG.DRY_DNF_CHANCE_PER_LAP;
-        if (Math.random() < dnfChance && car.lap > 1 && !this.safetyCarActive) {
-          car.isDNF = true;
-          car.dnfReason = this.weather === 'wet' ? 'Aquaplaned into Barriers' : 'Hydraulics Failure';
-          car.status = 'DNF';
-          this.logCommentary(`💥 CRASH / DNF: ${car.driverName} is OUT with ${car.dnfReason}!`, 'incident');
+        // Random DNF Incident Chance (Part 2)
+        // Convert the per-race chance to a per-lap chance: 1 - (1 - DNF_CHANCE_PER_CAR_PER_RACE)^(1 / totalLaps)
+        const totalLaps = Math.max(1, this.totalLaps || 15);
+        let basePerLapDnfChance = 1 - Math.pow(1 - SIM_CONFIG.DNF_CHANCE_PER_CAR_PER_RACE, 1 / totalLaps);
 
-          // Trigger Safety Car with high probability
-          if (Math.random() < SIM_CONFIG.SC_TRIGGER_CHANCE_ON_DNF) {
-            this.triggerSafetyCar();
+        // Lower-skill drivers 1.5x as likely, top-skill drivers 0.6x (skill 1 to 100)
+        const skillFactor = car.skill >= 90 ? 0.6 : (car.skill <= 75 ? 1.5 : (1.5 - ((car.skill - 75) / 15) * 0.9));
+        // Wet weather 1.5x
+        const weatherFactor = this.weather === 'wet' ? 1.5 : 1.0;
+
+        const effectiveDnfChance = basePerLapDnfChance * skillFactor * weatherFactor;
+
+        // Count current DNFs
+        const currentDnfCount = this.cars.filter(c => c.isDNF).length;
+
+        // Check if DNF can happen: 4th never happens
+        if (!car.isDNF && car.lap > 1 && !this.safetyCarActive && currentDnfCount < 3) {
+          if (Math.random() < effectiveDnfChance) {
+            let allowRetirement = false;
+            if (currentDnfCount < SIM_CONFIG.MAX_DNFS_NORMAL) {
+              allowRetirement = true;
+            } else if (currentDnfCount === 2) {
+              // Once 2 cars have retired, 3rd only goes ahead with THIRD_DNF_CHANCE
+              if (Math.random() < SIM_CONFIG.THIRD_DNF_CHANCE) {
+                allowRetirement = true;
+              }
+            }
+
+            if (allowRetirement) {
+              car.isDNF = true;
+              car.dnfReason = this.weather === 'wet' ? 'Aquaplaned into Barriers' : 'Hydraulics Failure';
+              car.status = 'DNF';
+              this.logCommentary(`💥 CRASH / DNF: ${car.driverName} is OUT with ${car.dnfReason}!`, 'incident');
+
+              // Trigger Safety Car with high probability
+              if (Math.random() < SIM_CONFIG.SC_TRIGGER_CHANCE_ON_DNF) {
+                this.triggerSafetyCar();
+              }
+            }
           }
         }
 
@@ -1394,6 +1455,17 @@ const F1Simulator = {
     ctx.restore();
 
     // 3. Render Cars Smoothly Along Path with Heading Rotation & 3-Letter Driver Codes
+    // Determine current position ranking for label visibility
+    const sortedActive = [...this.cars].filter(c => !c.isDNF).sort((a, b) => b.totalDistanceLaps - a.totalDistanceLaps);
+    const numTotalCars = this.cars.length;
+
+    // Scale dot size smoothly for big fields (e.g. 20 cars: scale ~ 0.75; 4 cars: scale 1.0)
+    const scale = numTotalCars > 12 ? 0.75 : (numTotalCars > 6 ? 0.88 : 1.0);
+
+    // Check if cars are spread out (e.g. gap between leader and P8 or last car > 0.08 laps or lap > 1)
+    const leaderDist = sortedActive[0] ? sortedActive[0].totalDistanceLaps : 0;
+    const isSpreadOut = this.currentLap > 1 || (sortedActive.length > 1 && (leaderDist - sortedActive[sortedActive.length - 1].totalDistanceLaps) > 0.12);
+
     this.cars.forEach((car) => {
       if (car.isDNF) return;
 
@@ -1428,6 +1500,7 @@ const F1Simulator = {
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(angle);
+      ctx.scale(scale, scale);
 
       // Outer Glow
       ctx.beginPath();
@@ -1464,14 +1537,21 @@ const F1Simulator = {
       ctx.restore();
 
       // Driver 3-Letter Label
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 10px "Chakra Petch", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.shadowColor = '#000000';
-      ctx.shadowBlur = 4;
-      ctx.fillText(car.driverCode, p.x, p.y - 8);
-      ctx.shadowBlur = 0;
+      // Part 4: Hide labels outside the top 8 until the cars spread out
+      const currentRank = sortedActive.indexOf(car) + 1;
+      const showLabel = (numTotalCars <= 8) || (currentRank <= 8) || isSpreadOut;
+
+      if (showLabel) {
+        ctx.fillStyle = '#FFFFFF';
+        const fontSize = numTotalCars > 12 ? 8 : (numTotalCars > 8 ? 9 : 10);
+        ctx.font = `900 ${fontSize}px "Chakra Petch", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(car.driverCode, p.x, p.y - (6 * scale + 2));
+        ctx.shadowBlur = 0;
+      }
     });
 
     // 4. Update UI Telemetry Banner
@@ -1552,25 +1632,29 @@ const F1Simulator = {
 
   /**
    * Rate-limited commentary manager:
-   * - Minimum 2.5 seconds between posted messages.
-   * - Queues messages and processes one by one.
-   * - If queue grows beyond 3, drops low-priority messages ('overtake', 'normal').
-   * - Always preserves high-priority messages: 'incident', 'system' (Safety Car, DNF, fastest lap).
+   * - Rate limit measured in SIMULATED time (2.5 sim-seconds between normal messages).
+   * - High-priority events (DNF, safety car, race end) skip the queue and appear immediately.
+   * - Low-priority messages (overtakes, fastest lap) are dropped if more than 2 are queued.
+   * - When race ends, flush the queue instantly.
+   * - In Instant mode, skip queue and log only high-priority events and final result.
    */
   startCommentaryProcessor() {
     if (this.commentaryTimerId) return;
 
     this.commentaryTimerId = setInterval(() => {
-      this.drainCommentaryQueue();
-    }, 250); // Check queue frequently
+      // In case simulation is paused or stopped, check queue if needed
+      if (!this.isPlaying && this.commentaryQueue.length > 0) {
+        this.drainCommentaryQueue();
+      }
+    }, 250);
   },
 
   drainCommentaryQueue() {
     if (this.commentaryQueue.length === 0) return;
 
-    const now = Date.now();
-    // Minimum 2.5 seconds between messages
-    if (now - this.lastCommentaryPostTime < 2500) {
+    // 2.5 sim-seconds between messages (or 2.5 real seconds if sim hasn't started)
+    const currentSim = this.simulatedTimeSeconds;
+    if (currentSim - this.lastCommentarySimTime < 2.5) {
       return;
     }
 
@@ -1578,7 +1662,17 @@ const F1Simulator = {
     if (!nextMsg) return;
 
     this.renderCommentaryItem(nextMsg.text, nextMsg.type);
-    this.lastCommentaryPostTime = Date.now();
+    this.lastCommentarySimTime = currentSim;
+  },
+
+  flushCommentaryQueue() {
+    while (this.commentaryQueue.length > 0) {
+      const msg = this.commentaryQueue.shift();
+      if (msg) {
+        this.renderCommentaryItem(msg.text, msg.type);
+      }
+    }
+    this.lastCommentarySimTime = this.simulatedTimeSeconds;
   },
 
   renderCommentaryItem(text, type) {
@@ -1592,33 +1686,40 @@ const F1Simulator = {
   },
 
   logCommentary(text, type = 'normal') {
-    const isHighPriority = type === 'incident' || type === 'system';
+    // High-priority events: DNF, safety car, race end, system grid/start announcements
+    // Low-priority events: overtakes, fastest lap
+    const isHighPriority = (type === 'incident' || type === 'system') && !text.includes('FASTEST LAP');
 
-    const item = { text, type, isHighPriority };
-
-    // If queue has reached limit of 3, drop low-priority items
-    if (this.commentaryQueue.length >= 3) {
+    // In Instant mode, skip the queue and log ONLY high-priority events and final result
+    if (this.isInstantMode) {
       if (isHighPriority) {
-        // Drop oldest low-priority message to make room
-        const dropIdx = this.commentaryQueue.findIndex(m => !m.isHighPriority);
-        if (dropIdx !== -1) {
-          this.commentaryQueue.splice(dropIdx, 1);
-        }
-        this.commentaryQueue.push(item);
-      } else {
-        // Discard extra low-priority message
-        return;
+        this.renderCommentaryItem(text, type);
       }
-    } else {
-      this.commentaryQueue.push(item);
+      return;
     }
 
-    // Attempt immediate drain if interval allows
+    // High-priority events skip the queue and appear immediately
+    if (isHighPriority) {
+      this.renderCommentaryItem(text, type);
+      this.lastCommentarySimTime = this.simulatedTimeSeconds;
+      return;
+    }
+
+    // Low-priority messages: dropped if more than 2 are queued
+    if (this.commentaryQueue.length >= 2) {
+      // Already 2 low-priority messages waiting, drop incoming low-priority message
+      return;
+    }
+
+    this.commentaryQueue.push({ text, type });
+
+    // Attempt to drain if interval allows
     this.drainCommentaryQueue();
   },
 
   runInstantFinish() {
     this.pause();
+    this.isInstantMode = true;
     this.currentLap = this.totalLaps + 1;
 
     // Fast-forward simulation results
@@ -1630,6 +1731,7 @@ const F1Simulator = {
     });
 
     this.finishRace();
+    this.isInstantMode = false;
   },
 
   advanceToNextChampionshipRace() {
@@ -1649,7 +1751,8 @@ const F1Simulator = {
     this.fastestLap = { time: Infinity, driverName: null, carId: null };
     this.commentaryLogs = [];
     this.commentaryQueue = [];
-    this.lastCommentaryPostTime = 0;
+    this.simulatedTimeSeconds = 0;
+    this.lastCommentarySimTime = -999;
 
     // Show Start Qualifying button for next race
     const qualyBtn = document.getElementById('btn-sim-qualifying');
@@ -1677,20 +1780,22 @@ const F1Simulator = {
     document.getElementById('sim-status-badge').style.background = '#FFD700';
     document.getElementById('sim-status-badge').style.color = '#000';
 
+    // Flush any pending commentary instantly when the race ends
+    this.flushCommentaryQueue();
     this.logCommentary('🏁 CHECKERED FLAG: The Grand Prix has concluded!', 'system');
 
-    // 1. Calculate Final Classification for this race
-    const finalClassification = [...this.cars].sort((a, b) => {
-      if (a.isDNF && !b.isDNF) return 1;
-      if (!a.isDNF && b.isDNF) return -1;
-      return b.totalDistanceLaps - a.totalDistanceLaps;
-    });
+    // 1. Calculate Final Classification for this race:
+    // Finishers first (sorted by distance/laps descending).
+    // DNF drivers below all finishers, ordered by laps completed (most first).
+    const finishers = this.cars.filter(c => !c.isDNF).sort((a, b) => b.totalDistanceLaps - a.totalDistanceLaps);
+    const dnfCars = this.cars.filter(c => c.isDNF).sort((a, b) => (b.lapsCompleted || 0) - (a.lapsCompleted || 0));
+    const finalClassification = [...finishers, ...dnfCars];
 
-    // 2. Award Points & Fastest Lap Bonus (+1 pt if in top 10)
+    // 2. Award Points & Fastest Lap Bonus (+1 pt if in top 10 finishers, DNF drivers NEVER score points or FL bonus)
     let overallBestLap = null;
     let fastestLapDriver = null;
 
-    finalClassification.forEach(car => {
+    finishers.forEach(car => {
       if (car.bestLap && (!overallBestLap || car.bestLap < overallBestLap)) {
         overallBestLap = car.bestLap;
         fastestLapDriver = car;
@@ -1698,6 +1803,12 @@ const F1Simulator = {
     });
 
     finalClassification.forEach((car, index) => {
+      if (car.isDNF) {
+        car.pointsAwarded = 0;
+        car.hasFastestLap = false;
+        return;
+      }
+
       let points = index < SIM_CONFIG.POINTS_SCALE.length ? SIM_CONFIG.POINTS_SCALE[index] : 0;
       if (car === fastestLapDriver && index < 10) {
         points += 1;
@@ -1798,9 +1909,11 @@ const F1Simulator = {
     driverTbody.innerHTML = '';
     finalClassification.forEach((car, index) => {
       const tr = document.createElement('tr');
+      const posDisplay = car.isDNF ? 'DNF' : `P${index + 1}`;
+      const dnfLabel = car.isDNF ? ` <span style="color:#FF3333; font-size:0.8rem;">(Lap ${car.lapsCompleted || 0})</span>` : '';
       tr.innerHTML = `
-        <td><strong>P${index + 1}</strong></td>
-        <td>${car.driverName}</td>
+        <td><strong>${posDisplay}</strong></td>
+        <td>${car.driverName}${dnfLabel}</td>
         <td>${car.playerName}</td>
         <td><strong>${car.pointsAwarded} PTS</strong></td>
       `;
@@ -1897,11 +2010,16 @@ const F1Simulator = {
     driverTbody.innerHTML = '';
     finalClassification.forEach((car, index) => {
       const tr = document.createElement('tr');
+      const posDisplay = car.isDNF ? 'DNF' : `P${index + 1}`;
+      const lapTimeOrDnf = car.isDNF
+        ? `<span style="color:#FF3333; font-weight:bold;">DNF (Lap ${car.lapsCompleted || 0})</span>`
+        : (car.hasFastestLap ? '🟣 FASTEST LAP (+1)' : (car.bestLap ? `${car.bestLap.toFixed(2)}s` : 'N/A'));
+
       tr.innerHTML = `
-        <td><strong>P${index + 1}</strong></td>
+        <td><strong>${posDisplay}</strong></td>
         <td>${car.driverName}</td>
         <td>${car.playerName}</td>
-        <td>${car.hasFastestLap ? '🟣 FASTEST LAP (+1)' : (car.bestLap ? `${car.bestLap.toFixed(2)}s` : 'N/A')}</td>
+        <td>${lapTimeOrDnf}</td>
         <td><strong>${car.pointsAwarded} PTS</strong></td>
       `;
       driverTbody.appendChild(tr);
