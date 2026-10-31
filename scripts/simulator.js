@@ -42,49 +42,263 @@ const SIM_CONFIG = {
   // Points scoring system
   POINTS_SCALE: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
 
-  // Track-specific attributes: base lap time (dry), overtaking difficulty (0.0 = very easy, 1.0 = near impossible)
+  // Track metadata: displayName, country, laps (10-20), overtakingDifficulty (0 to 1), baseLapTime
   TRACKS: {
     monaco: {
-      name: 'Monaco - Circuit de Monaco',
+      displayName: 'Circuit de Monaco',
+      country: 'Monaco',
+      laps: 18,
+      overtakingDifficulty: 0.90, // Extremely hard to pass
       baseLapTime: 72.0,
-      overtakingDifficulty: 0.85, // Extremely difficult to overtake
-      tyreWearMultiplier: 0.8,
-      drsGainSeconds: 0.3
+      tyreWearMultiplier: 0.8
     },
     monza: {
-      name: 'Monza - Temple of Speed',
+      displayName: 'Autodromo Nazionale Monza',
+      country: 'Italy',
+      laps: 15,
+      overtakingDifficulty: 0.22, // Long straights, slipstream & DRS
       baseLapTime: 81.0,
-      overtakingDifficulty: 0.25, // Long straights, very easy overtakes
-      tyreWearMultiplier: 0.9,
-      drsGainSeconds: 0.7
+      tyreWearMultiplier: 0.9
     },
     spa: {
-      name: 'Spa - Francorchamps',
+      displayName: 'Circuit de Spa-Francorchamps',
+      country: 'Belgium',
+      laps: 12,
+      overtakingDifficulty: 0.35,
       baseLapTime: 104.0,
-      overtakingDifficulty: 0.35, // Kemmel straight makes overtaking accessible
-      tyreWearMultiplier: 1.15,
-      drsGainSeconds: 0.65
+      tyreWearMultiplier: 1.15
     },
     silverstone: {
-      name: 'Silverstone - GP Circuit',
-      baseLapTime: 87.0,
+      displayName: 'Silverstone Circuit',
+      country: 'Great Britain',
+      laps: 15,
       overtakingDifficulty: 0.45,
-      tyreWearMultiplier: 1.25, // High lateral loads & degradation
-      drsGainSeconds: 0.55
+      baseLapTime: 87.0,
+      tyreWearMultiplier: 1.25
     },
     suzuka: {
-      name: 'Suzuka - International Racing Course',
+      displayName: 'Suzuka International Racing Course',
+      country: 'Japan',
+      laps: 15,
+      overtakingDifficulty: 0.60,
       baseLapTime: 89.0,
-      overtakingDifficulty: 0.60, // Technical sector 1, main straight DRS
-      tyreWearMultiplier: 1.20,
-      drsGainSeconds: 0.5
+      tyreWearMultiplier: 1.20
     },
     interlagos: {
-      name: 'Interlagos - Autódromo José Carlos Pace',
+      displayName: 'Autódromo José Carlos Pace',
+      country: 'Brazil',
+      laps: 18,
+      overtakingDifficulty: 0.30,
       baseLapTime: 70.5,
-      overtakingDifficulty: 0.30, // Senna S and Reta Oposta
-      tyreWearMultiplier: 1.0,
-      drsGainSeconds: 0.6
+      tyreWearMultiplier: 1.0
+    },
+    albert_park: {
+      displayName: 'Albert Park Circuit',
+      country: 'Australia',
+      laps: 16,
+      overtakingDifficulty: 0.45,
+      baseLapTime: 79.0,
+      tyreWearMultiplier: 1.05
+    },
+    bahrain: {
+      displayName: 'Bahrain International Circuit',
+      country: 'Bahrain',
+      laps: 16,
+      overtakingDifficulty: 0.30,
+      baseLapTime: 91.0,
+      tyreWearMultiplier: 1.25
+    },
+    jeddah: {
+      displayName: 'Jeddah Corniche Circuit',
+      country: 'Saudi Arabia',
+      laps: 15,
+      overtakingDifficulty: 0.35,
+      baseLapTime: 88.0,
+      tyreWearMultiplier: 1.10
+    },
+    baku: {
+      displayName: 'Baku City Circuit',
+      country: 'Azerbaijan',
+      laps: 15,
+      overtakingDifficulty: 0.20, // 2.2km main straight, low difficulty
+      baseLapTime: 102.0,
+      tyreWearMultiplier: 1.0
+    },
+    miami: {
+      displayName: 'Miami International Autodrome',
+      country: 'United States',
+      laps: 16,
+      overtakingDifficulty: 0.40,
+      baseLapTime: 89.0,
+      tyreWearMultiplier: 1.10
+    },
+    imola: {
+      displayName: 'Autodromo Enzo e Dino Ferrari',
+      country: 'Italy',
+      laps: 17,
+      overtakingDifficulty: 0.70, // Narrow traditional circuit
+      baseLapTime: 75.0,
+      tyreWearMultiplier: 1.05
+    },
+    barcelona: {
+      displayName: 'Circuit de Barcelona-Catalunya',
+      country: 'Spain',
+      laps: 17,
+      overtakingDifficulty: 0.55,
+      baseLapTime: 76.0,
+      tyreWearMultiplier: 1.20
+    },
+    montreal: {
+      displayName: 'Circuit Gilles-Villeneuve',
+      country: 'Canada',
+      laps: 18,
+      overtakingDifficulty: 0.38,
+      baseLapTime: 73.0,
+      tyreWearMultiplier: 1.0
+    },
+    red_bull_ring: {
+      displayName: 'Red Bull Ring',
+      country: 'Austria',
+      laps: 19,
+      overtakingDifficulty: 0.32,
+      baseLapTime: 65.0,
+      tyreWearMultiplier: 1.0
+    },
+    hungaroring: {
+      displayName: 'Hungaroring',
+      country: 'Hungary',
+      laps: 18,
+      overtakingDifficulty: 0.80, // High downforce, hard to pass
+      baseLapTime: 76.0,
+      tyreWearMultiplier: 1.10
+    },
+    zandvoort: {
+      displayName: 'Circuit Zandvoort',
+      country: 'Netherlands',
+      laps: 18,
+      overtakingDifficulty: 0.75,
+      baseLapTime: 71.0,
+      tyreWearMultiplier: 1.20
+    },
+    singapore: {
+      displayName: 'Marina Bay Street Circuit',
+      country: 'Singapore',
+      laps: 16,
+      overtakingDifficulty: 0.85, // Street circuit, high difficulty
+      baseLapTime: 95.0,
+      tyreWearMultiplier: 1.15
+    },
+    cota: {
+      displayName: 'Circuit of the Americas',
+      country: 'United States',
+      laps: 15,
+      overtakingDifficulty: 0.45,
+      baseLapTime: 96.0,
+      tyreWearMultiplier: 1.20
+    },
+    mexico_city: {
+      displayName: 'Autódromo Hermanos Rodríguez',
+      country: 'Mexico',
+      laps: 18,
+      overtakingDifficulty: 0.40,
+      baseLapTime: 78.0,
+      tyreWearMultiplier: 0.95
+    },
+    las_vegas: {
+      displayName: 'Las Vegas Street Circuit',
+      country: 'United States',
+      laps: 15,
+      overtakingDifficulty: 0.25, // Long Strip straight, easy overtakes
+      baseLapTime: 93.0,
+      tyreWearMultiplier: 0.90
+    },
+    lusail: {
+      displayName: 'Losail International Circuit',
+      country: 'Qatar',
+      laps: 16,
+      overtakingDifficulty: 0.45,
+      baseLapTime: 83.0,
+      tyreWearMultiplier: 1.30
+    },
+    yas_marina: {
+      displayName: 'Yas Marina Circuit',
+      country: 'United Arab Emirates',
+      laps: 16,
+      overtakingDifficulty: 0.42,
+      baseLapTime: 84.0,
+      tyreWearMultiplier: 1.05
+    },
+    shanghai: {
+      displayName: 'Shanghai International Circuit',
+      country: 'China',
+      laps: 15,
+      overtakingDifficulty: 0.35,
+      baseLapTime: 94.0,
+      tyreWearMultiplier: 1.20
+    },
+    paul_ricard: {
+      displayName: 'Circuit Paul Ricard',
+      country: 'France',
+      laps: 15,
+      overtakingDifficulty: 0.40,
+      baseLapTime: 92.0,
+      tyreWearMultiplier: 1.15
+    },
+    hockenheimring: {
+      displayName: 'Hockenheimring',
+      country: 'Germany',
+      laps: 17,
+      overtakingDifficulty: 0.38,
+      baseLapTime: 74.0,
+      tyreWearMultiplier: 1.10
+    },
+    nurburgring: {
+      displayName: 'Nürburgring GP',
+      country: 'Germany',
+      laps: 16,
+      overtakingDifficulty: 0.50,
+      baseLapTime: 88.0,
+      tyreWearMultiplier: 1.10
+    },
+    portimao: {
+      displayName: 'Autódromo Internacional do Algarve',
+      country: 'Portugal',
+      laps: 16,
+      overtakingDifficulty: 0.48,
+      baseLapTime: 78.0,
+      tyreWearMultiplier: 1.15
+    },
+    mugello: {
+      displayName: 'Autodromo Internazionale del Mugello',
+      country: 'Italy',
+      laps: 16,
+      overtakingDifficulty: 0.60,
+      baseLapTime: 77.0,
+      tyreWearMultiplier: 1.30
+    },
+    sepang: {
+      displayName: 'Sepang International Circuit',
+      country: 'Malaysia',
+      laps: 15,
+      overtakingDifficulty: 0.35,
+      baseLapTime: 93.0,
+      tyreWearMultiplier: 1.25
+    },
+    istanbul: {
+      displayName: 'Intercity Istanbul Park',
+      country: 'Turkey',
+      laps: 16,
+      overtakingDifficulty: 0.40,
+      baseLapTime: 86.0,
+      tyreWearMultiplier: 1.25
+    },
+    sochi: {
+      displayName: 'Sochi Autodrom',
+      country: 'Russia',
+      laps: 16,
+      overtakingDifficulty: 0.55,
+      baseLapTime: 95.0,
+      tyreWearMultiplier: 0.90
     }
   },
 
@@ -159,6 +373,29 @@ const F1Simulator = {
   // Commentary Log
   commentaryLogs: [],
 
+  populateTrackDropdown() {
+    const selectEl = document.getElementById('sim-track-select');
+    if (!selectEl) return;
+
+    const currentVal = selectEl.value || 'monza';
+    selectEl.innerHTML = '';
+
+    Object.keys(SIM_CONFIG.TRACKS).forEach(key => {
+      const t = SIM_CONFIG.TRACKS[key];
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = `${t.displayName} (${t.country}) - ${t.laps} Laps`;
+      if (key === currentVal) {
+        opt.selected = true;
+      }
+      selectEl.appendChild(opt);
+    });
+
+    if (!selectEl.value) {
+      selectEl.value = 'monza';
+    }
+  },
+
   getTrackPathObj(trackKey) {
     if (!this.pathCache[trackKey]) {
       const data = typeof TRACK_DATA !== 'undefined' ? TRACK_DATA[trackKey] : null;
@@ -192,8 +429,15 @@ const F1Simulator = {
     this.fastestLap = { time: Infinity, driverName: null, carId: null };
     this.commentaryLogs = [];
 
-    this.trackKey = document.getElementById('sim-track-select').value || 'monza';
+    // Dynamically populate track selector dropdown from SIM_CONFIG.TRACKS
+    this.populateTrackDropdown();
+
+    const selectEl = document.getElementById('sim-track-select');
+    this.trackKey = selectEl && selectEl.value ? selectEl.value : 'monza';
     this.weather = document.getElementById('sim-weather-select').value || 'dry';
+
+    const trackMeta = SIM_CONFIG.TRACKS[this.trackKey];
+    this.totalLaps = trackMeta && trackMeta.laps ? trackMeta.laps : 15;
 
     // 1. Build Drivers Array strictly from human drafted players
     this.buildDraftedCarsList();
@@ -347,6 +591,8 @@ const F1Simulator = {
   resetSimulation() {
     this.pause();
     this.currentLap = 1;
+    const trackMeta = SIM_CONFIG.TRACKS[this.trackKey];
+    this.totalLaps = trackMeta && trackMeta.laps ? trackMeta.laps : 15;
     this.safetyCarActive = false;
     this.safetyCarLapsRemaining = 0;
     this.fastestLap = { time: Infinity, driverName: null, carId: null };
@@ -354,8 +600,7 @@ const F1Simulator = {
     this.commentaryLogs = [];
     document.getElementById('commentary-feed').innerHTML = '';
 
-    const trackObj = this.getTrackPathObj(this.trackKey);
-    const name = trackObj ? trackObj.name : this.trackKey;
+    const name = trackMeta ? `${trackMeta.displayName} (${trackMeta.country})` : this.trackKey;
     this.logCommentary(`Track changed to ${name}. Sim reset.`, 'system');
     this.renderFrame();
   },
