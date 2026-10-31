@@ -280,11 +280,12 @@
     <!-- FINAL RESULTS & CHAMPIONSHIP PODIUM MODAL -->
     <div id="results-modal" class="modal-overlay hidden">
       <canvas id="confetti-canvas"></canvas>
-      <div class="modal-card modal-large">
+      <div class="modal-card modal-large modal-scrollable">
         <div class="modal-card-inner">
           <div class="modal-header text-center">
             <span class="modal-tag text-gold">🏁 CHAMPIONSHIP CEREMONY</span>
-            <h1 id="champion-announcement" class="champion-title">PLAYER 1 WINS THE F1 DRAFT! 🏆</h1>
+            <h1 id="ceremony-status-title" class="ceremony-title">CHAMPIONSHIP CEREMONY - REVEALING PODIUM...</h1>
+            <h1 id="champion-announcement" class="champion-title hidden-banner">PLAYER 1 WINS THE F1 DRAFT! 🏆</h1>
           </div>
 
           <!-- PHYSICAL 3-STEP PODIUM VIEW -->
@@ -301,7 +302,7 @@
 
             <!-- P1 Slot (Center Elevated) -->
             <div id="podium-slot-p1" class="podium-slot p1">
-              <div class="trophy-badge">🏆</div>
+              <div class="trophy-badge" id="p1-trophy-badge">🏆</div>
               <div class="podium-driver-info">
                 <div class="podium-rank p1-rank">P1 CHAMPION</div>
                 <div id="podium-p1-name" class="podium-player-name champion-name">--</div>

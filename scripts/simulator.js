@@ -1,9 +1,131 @@
 /**
- * F1 Draft - Live Track Simulator & Telemetry Engine
- * Features: GeoJSON SVG Circuit Map Visualizer, Car Physics & Curvature Dynamics,
- * Path Interpolation with Rotation & 3-Letter Driver Labels,
- * Weather Controls, Live Leaderboard, Safety Cars, and Championship Podium.
+ * F1 Draft - Realistic Grand Prix Simulation Engine
+ *
+ * Models real F1 physics & race dynamics:
+ * - Driver Skill (1-100)
+ * - Tyre Compounds (Soft, Medium, Hard, Wet) with compound-specific grip & degradation
+ * - Fuel load burn-off effect per lap
+ * - Track overtaking difficulty & 1.0s gap DRS threshold
+ * - Strategic Pit Stops (~20s in-pit loss, fresh tyres)
+ * - Random incidents & Safety Car deployments (bunching field, frozen overtakes)
+ * - Fastest Lap tracking & FIA points (25-18-15-12-10-8-6-4-2-1, +1 for top-10 FL)
+ * - Rich live commentary feed
+ * - Smooth continuous path visualizer using GeoJSON SVG track data
  */
+
+// ============================================================================
+// SIMULATION CONSTANTS & CONFIGURATION (Easily Tweakable)
+// ============================================================================
+const SIM_CONFIG = {
+  // Pit stop time loss in seconds (entry, box service, exit)
+  PIT_STOP_TIME_SECONDS: 20.0,
+
+  // Maximum tyre wear before car must pit (0 = fresh, 1 = destroyed)
+  TYRE_PIT_THRESHOLD: 0.65,
+
+  // Fuel load parameters
+  STARTING_FUEL_KG: 100.0,
+  FUEL_BURN_PER_LAP_KG: 100.0 / 20.0, // Burned completely over race distance
+  FUEL_TIME_PENALTY_PER_KG: 0.033,    // ~0.33s per 10kg fuel
+
+  // Base overtaking chance scaling
+  OVERTAKE_GAP_THRESHOLD_SECONDS: 1.0,
+
+  // Base incident / DNF probability per lap
+  DRY_DNF_CHANCE_PER_LAP: 0.008,
+  WET_DNF_CHANCE_PER_LAP: 0.022,
+
+  // Safety Car chance on incident
+  SC_TRIGGER_CHANCE_ON_DNF: 0.85,
+  SAFETY_CAR_DURATION_LAPS: 2,
+
+  // Points scoring system
+  POINTS_SCALE: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
+
+  // Track-specific attributes: base lap time (dry), overtaking difficulty (0.0 = very easy, 1.0 = near impossible)
+  TRACKS: {
+    monaco: {
+      name: 'Monaco - Circuit de Monaco',
+      baseLapTime: 72.0,
+      overtakingDifficulty: 0.85, // Extremely difficult to overtake
+      tyreWearMultiplier: 0.8,
+      drsGainSeconds: 0.3
+    },
+    monza: {
+      name: 'Monza - Temple of Speed',
+      baseLapTime: 81.0,
+      overtakingDifficulty: 0.25, // Long straights, very easy overtakes
+      tyreWearMultiplier: 0.9,
+      drsGainSeconds: 0.7
+    },
+    spa: {
+      name: 'Spa - Francorchamps',
+      baseLapTime: 104.0,
+      overtakingDifficulty: 0.35, // Kemmel straight makes overtaking accessible
+      tyreWearMultiplier: 1.15,
+      drsGainSeconds: 0.65
+    },
+    silverstone: {
+      name: 'Silverstone - GP Circuit',
+      baseLapTime: 87.0,
+      overtakingDifficulty: 0.45,
+      tyreWearMultiplier: 1.25, // High lateral loads & degradation
+      drsGainSeconds: 0.55
+    },
+    suzuka: {
+      name: 'Suzuka - International Racing Course',
+      baseLapTime: 89.0,
+      overtakingDifficulty: 0.60, // Technical sector 1, main straight DRS
+      tyreWearMultiplier: 1.20,
+      drsGainSeconds: 0.5
+    },
+    interlagos: {
+      name: 'Interlagos - Autódromo José Carlos Pace',
+      baseLapTime: 70.5,
+      overtakingDifficulty: 0.30, // Senna S and Reta Oposta
+      tyreWearMultiplier: 1.0,
+      drsGainSeconds: 0.6
+    }
+  },
+
+  // Tyre Compound Characteristics
+  // paceDelta: lap time advantage (negative = faster, positive = slower)
+  // wearRatePerLap: wear percentage added per lap
+  TYRE_COMPOUNDS: {
+    SOFT: {
+      name: 'SOFT',
+      code: 'S',
+      color: '#E10600',
+      paceDelta: -0.6,
+      wearRatePerLap: 0.055,
+      wetPacePenalty: 8.0
+    },
+    MEDIUM: {
+      name: 'MEDIUM',
+      code: 'M',
+      color: '#FFD700',
+      paceDelta: 0.0,
+      wearRatePerLap: 0.035,
+      wetPacePenalty: 9.0
+    },
+    HARD: {
+      name: 'HARD',
+      code: 'H',
+      color: '#FFFFFF',
+      paceDelta: +0.6,
+      wearRatePerLap: 0.022,
+      wetPacePenalty: 10.0
+    },
+    WET: {
+      name: 'WET',
+      code: 'W',
+      color: '#0099FF',
+      paceDelta: +3.0,
+      wearRatePerLap: 0.030,
+      wetPacePenalty: 0.0 // Optimized for rain
+    }
+  }
+};
 
 const F1Simulator = {
   canvas: null,
@@ -20,27 +142,22 @@ const F1Simulator = {
   totalLaps: 20,
   weather: 'dry', // 'dry' or 'wet'
   trackKey: 'monza',
+
   safetyCarActive: false,
   safetyCarLapsRemaining: 0,
 
-  // Cars Array (Strictly for player-drafted drivers)
+  // Fastest lap holder
+  fastestLap: {
+    time: Infinity,
+    driverName: null,
+    carId: null
+  },
+
+  // Cars Array
   cars: [],
 
   // Commentary Log
   commentaryLogs: [],
-
-  // F1 Championship Points Scale
-  pointsScale: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
-
-  // Base lap times for simulation physics (seconds per lap)
-  trackBaseLapTimes: {
-    monaco: 72.0,
-    monza: 81.0,
-    spa: 104.0,
-    silverstone: 87.0,
-    suzuka: 89.0,
-    interlagos: 70.5
-  },
 
   getTrackPathObj(trackKey) {
     if (!this.pathCache[trackKey]) {
@@ -72,6 +189,7 @@ const F1Simulator = {
     this.currentLap = 1;
     this.safetyCarActive = false;
     this.safetyCarLapsRemaining = 0;
+    this.fastestLap = { time: Infinity, driverName: null, carId: null };
     this.commentaryLogs = [];
 
     this.trackKey = document.getElementById('sim-track-select').value || 'monza';
@@ -88,8 +206,20 @@ const F1Simulator = {
 
     document.getElementById('sim-weather-select').addEventListener('change', (e) => {
       this.weather = e.target.value;
-      this.logCommentary(`Weather updated to ${this.weather === 'wet' ? 'Heavy Rain / Wet Track' : 'Dry Conditions'}.`, 'system');
+      this.logCommentary(`Weather update: Track is now ${this.weather === 'wet' ? '🌧️ WET (Heavy Rain)' : '☀️ DRY'}.`, 'system');
       document.getElementById('telemetry-weather-indicator').textContent = this.weather === 'wet' ? '🌧️ WET' : '☀️ DRY';
+      // Switch tyre compound strategies if needed
+      this.cars.forEach(car => {
+        if (!car.isDNF) {
+          if (this.weather === 'wet' && car.tyreCompound !== 'WET') {
+            car.tyreCompound = 'WET';
+            car.tyreAge = 0;
+          } else if (this.weather === 'dry' && car.tyreCompound === 'WET') {
+            car.tyreCompound = 'MEDIUM';
+            car.tyreAge = 0;
+          }
+        }
+      });
     });
 
     document.getElementById('btn-sim-play').onclick = () => this.play();
@@ -111,7 +241,7 @@ const F1Simulator = {
 
     const trackObj = this.getTrackPathObj(this.trackKey);
     const trackName = trackObj ? trackObj.name : 'Circuit';
-    this.logCommentary(`Grid formed with ${this.cars.length} drafted drivers at ${trackName}. Click PLAY to start!`, 'system');
+    this.logCommentary(`Grid formed with ${this.cars.length} cars at ${trackName}. Click PLAY to start the Grand Prix!`, 'system');
     this.renderFrame();
   },
 
@@ -119,17 +249,13 @@ const F1Simulator = {
     this.cars = [];
     let carId = 1;
 
-    // Collect all drafted drivers across all players using custom normalized driver skill ratings
     if (typeof F1App !== 'undefined' && F1App.state && F1App.state.players) {
       F1App.state.players.forEach(player => {
         player.roster.forEach(item => {
           const driverData = F1App.state.driverMap ? F1App.state.driverMap[item.name] : null;
           const driverSkill = item.skill || (driverData ? driverData.skill : 82);
 
-          // Qualifying time formula reflects driver skill rating + random variance
-          const qualyTime = (100 - driverSkill) + (Math.random() * 1.5 - 0.75);
-
-          // Generate 3-letter driver code (e.g., VER, HAM, LEC, NOR)
+          // Generate 3-letter driver code (e.g. VER, HAM, NOR)
           const nameParts = item.name.trim().split(/\s+/);
           let label = '';
           if (nameParts.length >= 2) {
@@ -137,6 +263,18 @@ const F1Simulator = {
           } else {
             label = item.name.substring(0, 3).toUpperCase();
           }
+
+          // Starting tyre compound based on weather and random team choice
+          let startingCompound = 'MEDIUM';
+          if (this.weather === 'wet') {
+            startingCompound = 'WET';
+          } else {
+            // Strategic variety: alternate between SOFT and MEDIUM
+            startingCompound = Math.random() < 0.45 ? 'SOFT' : 'MEDIUM';
+          }
+
+          // Qualifying time formula: reflects driver skill + setup variance
+          const qualyTime = (100 - driverSkill) * 0.2 + (Math.random() * 0.8 - 0.4);
 
           this.cars.push({
             id: carId++,
@@ -146,26 +284,42 @@ const F1Simulator = {
             color: player.color,
             skill: driverSkill,
             qualyTime: qualyTime,
-            // Telemetry
-            progress: 0, // 0 to 1 along circuit
+
+            // Telemetry & Race Metrics
             lap: 1,
+            progress: 0.0, // 0 to 1 continuous along circuit
+            totalDistanceLaps: 0.0, // continuous distance for interpolation
+            gapToLeader: 0.0, // in seconds
+            lastLapTime: 0.0,
+            bestLap: null,
             isDNF: false,
             dnfReason: null,
-            lapTimes: [],
-            bestLap: null,
-            currentSpeed: 0
+
+            // Tyres & Fuel
+            tyreCompound: startingCompound,
+            tyreAge: 0,
+            tyreWear: 0.0,
+            fuelLoadKg: SIM_CONFIG.STARTING_FUEL_KG,
+            pitStops: 0,
+            isPitting: false,
+            pitTimeLossRemaining: 0.0,
+
+            // Status string (RACING, IN PIT, DNF, SC)
+            status: 'RACING'
           });
         });
       });
     }
 
-    // Sort grid by qualifying lap times
+    // Sort grid strictly by qualifying times
     this.cars.sort((a, b) => a.qualyTime - b.qualyTime);
 
-    // Stagger start progress slightly based on grid position
+    // Initial grid positions and staggered gaps
     this.cars.forEach((car, index) => {
       car.gridPos = index + 1;
-      car.progress = Math.max(0, 0.04 - index * 0.006);
+      car.gapToLeader = index * 0.35; // 0.35s gap between grid slots
+      car.progress = Math.max(0, 0.03 - index * 0.005);
+      car.totalDistanceLaps = car.progress;
     });
   },
 
@@ -195,6 +349,7 @@ const F1Simulator = {
     this.currentLap = 1;
     this.safetyCarActive = false;
     this.safetyCarLapsRemaining = 0;
+    this.fastestLap = { time: Infinity, driverName: null, carId: null };
     this.buildDraftedCarsList();
     this.commentaryLogs = [];
     document.getElementById('commentary-feed').innerHTML = '';
@@ -219,100 +374,254 @@ const F1Simulator = {
     this.animationFrameId = requestAnimationFrame(() => this.loop());
   },
 
+  /**
+   * Per-Lap realistic pace calculation:
+   * base time (track) - skill bonus + tyre wear penalty - fuel effect + random variation.
+   */
+  computeCarLapPace(car) {
+    const trackInfo = SIM_CONFIG.TRACKS[this.trackKey] || SIM_CONFIG.TRACKS.monza;
+    const compound = SIM_CONFIG.TYRE_COMPOUNDS[car.tyreCompound] || SIM_CONFIG.TYRE_COMPOUNDS.MEDIUM;
+
+    // 1. Base track lap time
+    let lapTime = trackInfo.baseLapTime;
+
+    // 2. Skill bonus (Driver skill 1 to 100 scales pace up to 2.2s per lap)
+    const skillBonus = (car.skill / 100) * 2.2;
+    lapTime -= skillBonus;
+
+    // 3. Tyre Compound base pace advantage / disadvantage
+    lapTime += compound.paceDelta;
+
+    // 4. Tyre wear degradation penalty (grows quadratically with tyre age)
+    const wearMultiplier = trackInfo.tyreWearMultiplier;
+    const degradationPenalty = Math.pow(car.tyreWear, 1.8) * 4.5 * wearMultiplier;
+    lapTime += degradationPenalty;
+
+    // 5. Fuel effect: Car becomes faster as fuel burns down
+    const fuelEffect = car.fuelLoadKg * SIM_CONFIG.FUEL_TIME_PENALTY_PER_KG;
+    lapTime += fuelEffect;
+
+    // 6. Weather adjustment
+    if (this.weather === 'wet') {
+      lapTime += 10.0; // Slower overall in wet
+      lapTime += compound.wetPacePenalty; // Big penalty if on slicks in wet
+      // Skill matters twice as much in rain
+      lapTime -= ((car.skill - 50) / 100) * 2.0;
+      // Bigger random variation in wet
+      lapTime += (Math.random() * 1.6 - 0.8);
+    } else {
+      // Normal small random variation in dry
+      lapTime += (Math.random() * 0.4 - 0.2);
+    }
+
+    return lapTime;
+  },
+
   updatePhysics() {
+    const trackInfo = SIM_CONFIG.TRACKS[this.trackKey] || SIM_CONFIG.TRACKS.monza;
     const trackObj = this.getTrackPathObj(this.trackKey);
     if (!trackObj) return;
 
-    const baseLapTime = this.trackBaseLapTimes[this.trackKey] || 80.0;
-    // Base speed increment per frame
-    const baseSpeed = (1 / (baseLapTime * 60)) * this.simSpeed;
+    // Base nominal frame progress
+    const baseLapDurationSeconds = trackInfo.baseLapTime;
+    const baseFrameDelta = (1 / (baseLapDurationSeconds * 60)) * this.simSpeed;
+
+    // Sort cars by current distance completed (leader first)
+    const activeCars = this.cars.filter(c => !c.isDNF);
+    activeCars.sort((a, b) => b.totalDistanceLaps - a.totalDistanceLaps);
+
+    const leader = activeCars[0];
 
     // Process each car
     this.cars.forEach((car) => {
       if (car.isDNF) return;
 
-      // 1. Curvature / Speed factor from path geometry
-      const dist = (car.progress % 1) * trackObj.length;
-      let speedMult = this.getCurvatureSpeedFactor(trackObj, dist);
-
-      // Track-Specific Physics Modifiers
-      if (this.trackKey === 'monaco') {
-        speedMult *= 0.85; // Monaco: tighter street circuit
-      } else if (this.trackKey === 'monza') {
-        speedMult *= 1.15; // Monza: high-speed temple
-      } else if (this.trackKey === 'silverstone') {
-        // Silverstone: tire wear over race distance
-        const tireWearFactor = Math.max(0.85, 1.0 - (car.lap / this.totalLaps) * 0.15);
-        speedMult *= tireWearFactor;
-      } else if (this.trackKey === 'suzuka') {
-        if (car.progress <= 0.35 && car.skill >= 80) {
-          speedMult *= 1.15; // S-Curves skill bonus
+      // Handle Pit Stop Time Loss
+      if (car.isPitting) {
+        car.pitTimeLossRemaining -= (1 / 60) * this.simSpeed;
+        if (car.pitTimeLossRemaining <= 0) {
+          car.isPitting = false;
+          car.status = this.safetyCarActive ? 'SC' : 'RACING';
+          this.logCommentary(`🔧 PIT EXIT: ${car.driverName} resumes on fresh ${car.tyreCompound}s.`, 'system');
+        } else {
+          car.status = 'IN PIT';
+          // Car crawls down pit lane at 20% speed
+          car.progress += baseFrameDelta * 0.2;
+          car.totalDistanceLaps += baseFrameDelta * 0.2;
+          return;
         }
       }
 
-      // Weather penalty
-      if (this.weather === 'wet') {
-        speedMult *= 0.85;
-      }
+      // Compute dynamic lap pace
+      const theoreticalPace = this.computeCarLapPace(car);
+      // Speed factor relative to base lap time
+      let speedFactor = baseLapDurationSeconds / theoreticalPace;
 
-      // Safety car restriction
+      // Curvature Slowdown Factor (using SVG path curvature)
+      const distAlongPath = (car.progress % 1) * trackObj.length;
+      const cornerFactor = this.getCurvatureSpeedFactor(trackObj, distAlongPath);
+      speedFactor *= cornerFactor;
+
+      // Safety Car Restrictions: Bunch up field, limit max speed to 45%
       if (this.safetyCarActive) {
-        speedMult = Math.min(speedMult, 0.4);
+        speedFactor = Math.min(speedFactor, 0.45);
+        car.status = 'SC';
+      } else {
+        car.status = 'RACING';
       }
 
-      // Skill influence (+/- 15%)
-      const skillMult = 0.85 + (car.skill / 100) * 0.3;
+      // Advance car progress continuously along path
+      const frameAdvance = baseFrameDelta * speedFactor;
+      car.progress += frameAdvance;
+      car.totalDistanceLaps += frameAdvance;
 
-      // Advance car progress
-      const frameProgress = baseSpeed * speedMult * skillMult;
-      car.progress += frameProgress;
+      // Burn fuel gradually
+      car.fuelLoadKg = Math.max(5.0, car.fuelLoadKg - (SIM_CONFIG.FUEL_BURN_PER_LAP_KG * frameAdvance));
 
-      // Check Lap Completion
+      // Degrade tyres
+      const compound = SIM_CONFIG.TYRE_COMPOUNDS[car.tyreCompound] || SIM_CONFIG.TYRE_COMPOUNDS.MEDIUM;
+      car.tyreAge += frameAdvance;
+      car.tyreWear = Math.min(1.0, car.tyreWear + (compound.wearRatePerLap * trackInfo.tyreWearMultiplier * frameAdvance));
+
+      // Lap Completion Check
       if (car.progress >= 1.0) {
         car.progress -= 1.0;
         car.lap += 1;
 
-        // Calculate lap time
-        const lapTimeSec = baseLapTime * (1 / skillMult) + (Math.random() * 2 - 1);
-        car.lapTimes.push(lapTimeSec);
-        if (!car.bestLap || lapTimeSec < car.bestLap) {
-          car.bestLap = lapTimeSec;
+        const completedLapTime = theoreticalPace + (Math.random() * 0.3 - 0.15);
+        car.lastLapTime = completedLapTime;
+
+        // Check for Fastest Lap
+        if (!car.bestLap || completedLapTime < car.bestLap) {
+          car.bestLap = completedLapTime;
+        }
+
+        if (completedLapTime < this.fastestLap.time && car.lap > 1) {
+          this.fastestLap.time = completedLapTime;
+          this.fastestLap.driverName = car.driverName;
+          this.fastestLap.carId = car.id;
+          this.logCommentary(`🟣 FASTEST LAP: ${car.driverName} sets a ${completedLapTime.toFixed(3)}s!`, 'system');
         }
 
         // Random DNF Incident Chance
-        let dnfThreshold = this.weather === 'wet' ? 0.035 : 0.015;
-        if (this.trackKey === 'monaco') {
-          dnfThreshold *= 1.30;
-        } else if (this.trackKey === 'interlagos' && this.weather === 'wet') {
-          dnfThreshold *= 1.25;
+        const dnfChance = this.weather === 'wet' ? SIM_CONFIG.WET_DNF_CHANCE_PER_LAP : SIM_CONFIG.DRY_DNF_CHANCE_PER_LAP;
+        if (Math.random() < dnfChance && car.lap > 1 && !this.safetyCarActive) {
+          car.isDNF = true;
+          car.dnfReason = this.weather === 'wet' ? 'Aquaplaned into Barriers' : 'Hydraulics Failure';
+          car.status = 'DNF';
+          this.logCommentary(`💥 CRASH / DNF: ${car.driverName} is OUT with ${car.dnfReason}!`, 'incident');
+
+          // Trigger Safety Car with high probability
+          if (Math.random() < SIM_CONFIG.SC_TRIGGER_CHANCE_ON_DNF) {
+            this.triggerSafetyCar();
+          }
         }
 
-        if (Math.random() < dnfThreshold && car.lap > 1 && !this.safetyCarActive) {
-          car.isDNF = true;
-          car.dnfReason = this.weather === 'wet' ? 'Aquaplaned / Crash' : 'Engine Breakdown';
-          this.logCommentary(`💥 CRASH! ${car.driverName} (${car.playerName}) suffers ${car.dnfReason}!`, 'incident');
-          this.triggerSafetyCar();
+        // Pit Stop Strategy Decision: If tyres worn past threshold
+        if (!car.isDNF && car.tyreWear >= SIM_CONFIG.TYRE_PIT_THRESHOLD && car.lap < (this.totalLaps - 1)) {
+          this.executePitStop(car);
         }
       }
     });
 
-    // Update global current lap counter (based on leader)
-    const leader = [...this.cars].sort((a, b) => (b.lap + b.progress) - (a.lap + a.progress))[0];
+    // Update global leader lap counter
     if (leader) {
       this.currentLap = Math.min(leader.lap, this.totalLaps + 1);
     }
 
     // Process Safety Car Laps
     if (this.safetyCarActive) {
-      this.safetyCarLapsRemaining -= 0.005 * this.simSpeed;
+      this.safetyCarLapsRemaining -= 0.0035 * this.simSpeed;
       if (this.safetyCarLapsRemaining <= 0) {
         this.safetyCarActive = false;
-        this.logCommentary('🟢 SAFETY CAR IN THIS LAP! Green flag racing resumes!', 'system');
+        this.logCommentary('🟢 SAFETY CAR IN THIS LAP: Track clear, green flag racing resumes!', 'system');
       }
     }
 
-    // Process Overtaking logic & Commentary
-    this.processOvertakes();
+    // Process realistic DRS, close combat & overtaking
+    this.processOvertaking();
+  },
+
+  executePitStop(car) {
+    car.isPitting = true;
+    car.pitStops += 1;
+    car.pitTimeLossRemaining = SIM_CONFIG.PIT_STOP_TIME_SECONDS;
+
+    const oldCompound = car.tyreCompound;
+    // Choose new compound: If wet, stick to WET. If dry, switch between Soft/Medium/Hard
+    if (this.weather === 'wet') {
+      car.tyreCompound = 'WET';
+    } else {
+      const remainingLaps = this.totalLaps - car.lap;
+      if (remainingLaps <= 6) {
+        car.tyreCompound = 'SOFT'; // Sprint to finish on Softs
+      } else if (oldCompound === 'SOFT') {
+        car.tyreCompound = 'HARD';
+      } else {
+        car.tyreCompound = 'MEDIUM';
+      }
+    }
+
+    car.tyreAge = 0;
+    car.tyreWear = 0.0;
+    this.logCommentary(`🛑 BOX BOX: ${car.driverName} pits for fresh ${car.tyreCompound} tyres! (~20s stop)`, 'system');
+  },
+
+  /**
+   * Overtaking Logic:
+   * Car within 1.0s gap with pace advantage has chance to pass based on pace difference & track difficulty.
+   * Otherwise stays stuck behind slower car.
+   */
+  processOvertaking() {
+    if (this.safetyCarActive) return;
+
+    const trackInfo = SIM_CONFIG.TRACKS[this.trackKey] || SIM_CONFIG.TRACKS.monza;
+    const activeCars = this.cars.filter(c => !c.isDNF && !c.isPitting);
+    // Sort by total distance covered descending
+    activeCars.sort((a, b) => b.totalDistanceLaps - a.totalDistanceLaps);
+
+    const baseLapTime = trackInfo.baseLapTime;
+
+    for (let i = 0; i < activeCars.length - 1; i++) {
+      const ahead = activeCars[i];
+      const behind = activeCars[i + 1];
+
+      // Time gap between cars
+      const lapDelta = ahead.totalDistanceLaps - behind.totalDistanceLaps;
+      const gapSeconds = lapDelta * baseLapTime;
+      behind.gapToLeader = (activeCars[0].totalDistanceLaps - behind.totalDistanceLaps) * baseLapTime;
+
+      // DRS Zone proximity condition: within 1.0 second
+      if (gapSeconds <= SIM_CONFIG.OVERTAKE_GAP_THRESHOLD_SECONDS && gapSeconds > 0) {
+        const aheadPace = this.computeCarLapPace(ahead);
+        const behindPace = this.computeCarLapPace(behind);
+        const paceAdvantage = aheadPace - behindPace; // Positive if behind is faster
+
+        if (paceAdvantage > 0.2) {
+          // Overtaking probability depends on pace delta and track difficulty
+          const difficultyFactor = 1.0 - trackInfo.overtakingDifficulty;
+          const overtakeProb = (paceAdvantage * 0.08 + 0.02) * difficultyFactor;
+
+          if (Math.random() < overtakeProb) {
+            // Swap distance positions
+            const tempDist = ahead.totalDistanceLaps;
+            ahead.totalDistanceLaps = behind.totalDistanceLaps;
+            behind.totalDistanceLaps = tempDist;
+
+            const tempProg = ahead.progress;
+            ahead.progress = behind.progress;
+            behind.progress = tempProg;
+
+            this.logCommentary(`⚔️ OVERTAKE: ${behind.driverName} (${behind.driverCode}) dives down the inside to pass ${ahead.driverName}!`, 'overtake');
+            break;
+          } else {
+            // Stuck in dirty air behind slower car: cap speed to car ahead
+            behind.progress = Math.min(behind.progress, ahead.progress - 0.002);
+            behind.totalDistanceLaps = Math.min(behind.totalDistanceLaps, ahead.totalDistanceLaps - 0.002);
+          }
+        }
+      }
+    }
   },
 
   getCurvatureSpeedFactor(trackObj, dist) {
@@ -329,40 +638,15 @@ const F1Simulator = {
     while (diff > Math.PI) diff -= Math.PI * 2;
     diff = Math.abs(diff);
 
-    // Tight corners (large diff) slow car down, straights allow higher top speed
-    const factor = Math.max(0.45, 1.25 - diff * 2.0);
+    // Tight corners slow car down, straights allow higher acceleration
+    const factor = Math.max(0.48, 1.25 - diff * 2.0);
     return factor;
-  },
-
-  processOvertakes() {
-    const activeCars = this.cars.filter(c => !c.isDNF);
-    activeCars.sort((a, b) => (b.lap + b.progress) - (a.lap + a.progress));
-
-    for (let i = 0; i < activeCars.length - 1; i++) {
-      const ahead = activeCars[i];
-      const behind = activeCars[i + 1];
-
-      const gap = (ahead.lap + ahead.progress) - (behind.lap + behind.progress);
-
-      const skillDiff = behind.skill - ahead.skill;
-      const baseOvertakeChance = 0.05 + (skillDiff / 100) * 0.12;
-
-      if (gap < 0.006 && !this.safetyCarActive && Math.random() < Math.max(0.01, baseOvertakeChance)) {
-        // Perform swap
-        const tempProg = ahead.progress;
-        ahead.progress = behind.progress;
-        behind.progress = tempProg;
-
-        this.logCommentary(`⚔️ OVERTAKE! ${behind.driverName} (Skill: ${behind.skill}) passes ${ahead.driverName}!`, 'overtake');
-        break;
-      }
-    }
   },
 
   triggerSafetyCar() {
     this.safetyCarActive = true;
-    this.safetyCarLapsRemaining = 2;
-    this.logCommentary('⚠️ SAFETY CAR DEPLOYED! Field compressed - No overtaking allowed.', 'incident');
+    this.safetyCarLapsRemaining = SIM_CONFIG.SAFETY_CAR_DURATION_LAPS;
+    this.logCommentary('⚠️ SAFETY CAR DEPLOYED: Field compressed, pit lane open, overtaking strictly forbidden!', 'incident');
   },
 
   renderFrame() {
@@ -375,7 +659,7 @@ const F1Simulator = {
     const trackObj = this.getTrackPathObj(this.trackKey);
     if (!trackObj) return;
 
-    // 1. Draw SVG Track Circuit Path
+    // 1. Draw Real GeoJSON Track Circuit Outline
     // Outer Asphalt Border (Thick Dark Stroke)
     ctx.strokeStyle = '#0B0B10';
     ctx.lineWidth = 26;
@@ -397,7 +681,7 @@ const F1Simulator = {
     ctx.lineWidth = 2;
     ctx.setLineDash([8, 8]);
     ctx.stroke(trackObj.path2d);
-    ctx.setLineDash([]); // Reset line dash
+    ctx.setLineDash([]);
 
     // Safety Car Yellow Outline overlay
     if (this.safetyCarActive) {
@@ -414,14 +698,13 @@ const F1Simulator = {
     ctx.save();
     ctx.translate(startPt.x, startPt.y);
     ctx.rotate(startAngle + Math.PI / 2);
-    // Draw Checkered Start / Finish Bar
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(-12, -3, 24, 6);
     ctx.fillStyle = '#E10600';
     ctx.fillRect(-12, -1, 24, 2);
     ctx.restore();
 
-    // 3. Move Cars Along Path using path.getPointAtLength() & Rotate to Travel Direction
+    // 3. Render Cars Smoothly Along Path with Heading Rotation & 3-Letter Driver Codes
     this.cars.forEach((car) => {
       if (car.isDNF) return;
 
@@ -431,7 +714,6 @@ const F1Simulator = {
       const pAhead = trackObj.el.getPointAtLength((dist + delta) % trackObj.length);
       const angle = Math.atan2(pAhead.y - p.y, pAhead.x - p.x);
 
-      // Render Sleek Car Body
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(angle);
@@ -461,9 +743,16 @@ const F1Simulator = {
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(5, -3, 3, 6);
 
+      // Tyre Compound Dot Indicator on Car
+      const compoundInfo = SIM_CONFIG.TYRE_COMPOUNDS[car.tyreCompound] || SIM_CONFIG.TYRE_COMPOUNDS.MEDIUM;
+      ctx.fillStyle = compoundInfo.color;
+      ctx.beginPath();
+      ctx.arc(-2, 0, 2, 0, 2 * Math.PI);
+      ctx.fill();
+
       ctx.restore();
 
-      // Show 3-letter Driver Label next to car
+      // Driver 3-Letter Label
       ctx.fillStyle = '#FFFFFF';
       ctx.font = '900 10px "Chakra Petch", sans-serif';
       ctx.textAlign = 'center';
@@ -471,7 +760,7 @@ const F1Simulator = {
       ctx.shadowColor = '#000000';
       ctx.shadowBlur = 4;
       ctx.fillText(car.driverCode, p.x, p.y - 8);
-      ctx.shadowBlur = 0; // Reset shadow
+      ctx.shadowBlur = 0;
     });
 
     // 4. Update UI Telemetry Banner
@@ -489,11 +778,11 @@ const F1Simulator = {
     const sortedCars = [...this.cars].sort((a, b) => {
       if (a.isDNF && !b.isDNF) return 1;
       if (!a.isDNF && b.isDNF) return -1;
-      return (b.lap + b.progress) - (a.lap + a.progress);
+      return b.totalDistanceLaps - a.totalDistanceLaps;
     });
 
     const leader = sortedCars[0];
-    const baseLapTime = this.trackBaseLapTimes[this.trackKey] || 80.0;
+    const trackInfo = SIM_CONFIG.TRACKS[this.trackKey] || SIM_CONFIG.TRACKS.monza;
 
     sortedCars.forEach((car, index) => {
       const tr = document.createElement('tr');
@@ -501,12 +790,18 @@ const F1Simulator = {
       const posTd = document.createElement('td');
       posTd.innerHTML = `<strong>P${index + 1}</strong>`;
 
+      // Driver Name with Tyre Compound Pill
+      const compoundInfo = SIM_CONFIG.TYRE_COMPOUNDS[car.tyreCompound] || SIM_CONFIG.TYRE_COMPOUNDS.MEDIUM;
       const driverTd = document.createElement('td');
-      driverTd.innerHTML = `<span class="badge-tag" style="background-color: ${car.color}; color:#FFF;">•</span>${car.driverName}`;
+      driverTd.innerHTML = `
+        <span class="badge-tag" style="background-color: ${car.color}; color:#FFF;">•</span>${car.driverName}
+        <span style="display:inline-block; margin-left:4px; padding:1px 4px; font-size:9px; font-weight:900; border-radius:2px; background:${compoundInfo.color}; color:#000;">${compoundInfo.code}</span>
+      `;
 
       const teamTd = document.createElement('td');
       teamTd.textContent = car.playerName;
 
+      // Realistic Gap in Seconds
       const gapTd = document.createElement('td');
       if (car.isDNF) {
         gapTd.textContent = 'OUT';
@@ -515,14 +810,17 @@ const F1Simulator = {
         gapTd.textContent = 'LEADER';
         gapTd.style.color = '#00E676';
       } else {
-        const gapDist = (leader.lap + leader.progress) - (car.lap + car.progress);
-        const gapSec = (gapDist * baseLapTime).toFixed(1);
+        const gapLaps = leader.totalDistanceLaps - car.totalDistanceLaps;
+        const gapSec = Math.max(0.1, gapLaps * trackInfo.baseLapTime).toFixed(1);
         gapTd.textContent = `+${gapSec}s`;
       }
 
+      // Live Status (RACING, PIT, SC, DNF)
       const statusTd = document.createElement('td');
       if (car.isDNF) {
         statusTd.innerHTML = `<span style="color:#FF3333; font-weight:bold;">DNF</span>`;
+      } else if (car.isPitting) {
+        statusTd.innerHTML = `<span style="color:#29B6F6; font-weight:bold;">PIT (${car.pitStops})</span>`;
       } else if (this.safetyCarActive) {
         statusTd.innerHTML = `<span style="color:#FFCC00;">SC</span>`;
       } else {
@@ -557,7 +855,7 @@ const F1Simulator = {
     this.cars.forEach(car => {
       if (!car.isDNF) {
         car.lap = this.totalLaps;
-        car.progress = 0.99 - (car.gridPos * 0.02) + (Math.random() * 0.15);
+        car.totalDistanceLaps = this.totalLaps + 0.99 - (car.gridPos * 0.02) + (Math.random() * 0.08);
       }
     });
 
@@ -570,16 +868,16 @@ const F1Simulator = {
     document.getElementById('sim-status-badge').style.background = '#FFD700';
     document.getElementById('sim-status-badge').style.color = '#000';
 
-    this.logCommentary('🏁 CHECKERED FLAG! The Grand Prix has concluded!', 'system');
+    this.logCommentary('🏁 CHECKERED FLAG: The Grand Prix has concluded!', 'system');
 
     // 1. Calculate Final Classification
     const finalClassification = [...this.cars].sort((a, b) => {
       if (a.isDNF && !b.isDNF) return 1;
       if (!a.isDNF && b.isDNF) return -1;
-      return (b.lap + b.progress) - (a.lap + a.progress);
+      return b.totalDistanceLaps - a.totalDistanceLaps;
     });
 
-    // 2. Award Points & Fastest Lap Bonus
+    // 2. Award Points & Fastest Lap Bonus (+1 pt if in top 10)
     let overallBestLap = null;
     let fastestLapDriver = null;
 
@@ -591,7 +889,7 @@ const F1Simulator = {
     });
 
     finalClassification.forEach((car, index) => {
-      let points = index < this.pointsScale.length ? this.pointsScale[index] : 0;
+      let points = index < SIM_CONFIG.POINTS_SCALE.length ? SIM_CONFIG.POINTS_SCALE[index] : 0;
       if (car === fastestLapDriver && index < 10) {
         points += 1;
         car.hasFastestLap = true;
@@ -620,7 +918,7 @@ const F1Simulator = {
       };
     });
 
-    // Sort Team Champions with Tie-Breaker Rules:
+    // Tie-Breaker Rules:
     // 1) Total Points (descending)
     // 2) Highest single-driver finish (best position ascending)
     // 3) Remaining budget (descending)
@@ -636,9 +934,7 @@ const F1Simulator = {
 
     const winningPlayer = teamScores[0];
 
-    // 4. Populate Results Overlay & Physical Podium Slots
-    document.getElementById('champion-announcement').textContent = `${winningPlayer.playerName.toUpperCase()} WINS THE F1 DRAFT! 🏆`;
-
+    // Populate Podium Names & Points
     const p1Team = teamScores[0] || { playerName: '--', totalPoints: 0 };
     const p2Team = teamScores[1] || { playerName: '--', totalPoints: 0 };
     const p3Team = teamScores[2] || { playerName: '--', totalPoints: 0 };
@@ -681,34 +977,73 @@ const F1Simulator = {
       driverTbody.appendChild(tr);
     });
 
-    // Show Victory Modal & Trigger Kahoot-Style Sequential Rising Podium
-    document.getElementById('results-modal').classList.remove('hidden');
+    // Open Modal with generic header and hidden trophy initially
+    const resultsModal = document.getElementById('results-modal');
+    resultsModal.classList.remove('hidden');
+
+    const ceremonyTitle = document.getElementById('ceremony-status-title');
+    const championAnnouncement = document.getElementById('champion-announcement');
+    const trophyBadge = document.getElementById('p1-trophy-badge');
+
+    // Reset initial hidden states
+    if (ceremonyTitle) {
+      ceremonyTitle.style.display = 'block';
+      ceremonyTitle.style.opacity = '1';
+    }
+    if (championAnnouncement) {
+      championAnnouncement.classList.remove('visible-banner');
+      championAnnouncement.classList.add('hidden-banner');
+      championAnnouncement.textContent = `${winningPlayer.playerName.toUpperCase()} WINS THE F1 DRAFT! 🏆`;
+    }
+    if (trophyBadge) {
+      trophyBadge.classList.remove('revealed');
+    }
 
     document.querySelectorAll('.podium-block').forEach(b => b.classList.remove('raised'));
     document.querySelectorAll('.podium-driver-info').forEach(i => i.classList.remove('revealed'));
 
+    // PHASE 1: P3 reveals (podium rises, info reveals, trophy & winner banner stay hidden)
     setTimeout(() => {
       const p3Block = document.querySelector('.p3-block');
       const p3Info = document.querySelector('#podium-slot-p3 .podium-driver-info');
       if (p3Block) p3Block.classList.add('raised');
       if (p3Info) p3Info.classList.add('revealed');
-    }, 300);
+    }, 400);
 
+    // PHASE 2: P2 reveals (podium rises, info reveals, trophy & winner banner stay hidden)
     setTimeout(() => {
       const p2Block = document.querySelector('.p2-block');
       const p2Info = document.querySelector('#podium-slot-p2 .podium-driver-info');
       if (p2Block) p2Block.classList.add('raised');
       if (p2Info) p2Info.classList.add('revealed');
-    }, 1200);
+    }, 1400);
 
+    // PHASE 3: P1 Champion reveal!
+    // P1 pillar rises, info reveals, trophy pops in, winner banner fades in, and confetti bursts!
     setTimeout(() => {
       const p1Block = document.querySelector('.p1-block');
       const p1Info = document.querySelector('#podium-slot-p1 .podium-driver-info');
       if (p1Block) p1Block.classList.add('raised');
       if (p1Info) p1Info.classList.add('revealed');
 
+      // Pop in floating trophy on P1 pedestal
+      if (trophyBadge) {
+        trophyBadge.classList.add('revealed');
+      }
+
+      // Transition header from generic ceremony title to Champion Announcement
+      if (ceremonyTitle) {
+        ceremonyTitle.style.opacity = '0';
+        setTimeout(() => { ceremonyTitle.style.display = 'none'; }, 300);
+      }
+      if (championAnnouncement) {
+        championAnnouncement.classList.remove('hidden-banner');
+        championAnnouncement.classList.add('visible-banner');
+      }
+
+      // Trigger celebration confetti
       this.launchConfetti();
-    }, 2200);
+    }, 2500);
   },
 
   launchConfetti() {
@@ -722,7 +1057,7 @@ const F1Simulator = {
     const particles = [];
     const colors = ['#E10600', '#FFD700', '#FFFFFF', '#00D2BE', '#FF8000', '#3671C6'];
 
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 140; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height - canvas.height,
@@ -735,7 +1070,7 @@ const F1Simulator = {
       });
     }
 
-    let duration = 180;
+    let duration = 200;
     const renderConfetti = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
