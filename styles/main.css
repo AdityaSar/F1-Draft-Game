@@ -995,6 +995,17 @@ body {
   transform: skewX(-10deg);
 }
 
+.telemetry-champ {
+  background: rgba(31, 31, 44, 0.9);
+  border: 1px solid var(--gold-accent);
+  color: var(--gold-accent);
+  padding: 6px 14px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  transform: skewX(-10deg);
+  letter-spacing: 1px;
+}
+
 #sim-canvas {
   width: 100%;
   height: 100%;

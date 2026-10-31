@@ -349,6 +349,16 @@ const F1Simulator = {
   // Path Cache for SVG elements
   pathCache: {},
 
+  // Single Plain Object for Championship State (Cleanly resettable)
+  championshipState: {
+    isChampionship: false,
+    totalRaces: 1,
+    currentRaceIndex: 0,
+    tracks: [], // Array of track keys e.g. ['monza', 'spa', 'silverstone']
+    cumulativeScores: {}, // playerId -> { totalPoints, raceWins, bestSingleFinish }
+    roundResultsHistory: [] // History of past round classifications
+  },
+
   // Sim State
   isPlaying: false,
   hasRunQualifying: false,
@@ -383,6 +393,87 @@ const F1Simulator = {
 
   // Commentary Log
   commentaryLogs: [],
+
+  resetChampionshipState() {
+    this.championshipState = {
+      isChampionship: false,
+      totalRaces: 1,
+      currentRaceIndex: 0,
+      tracks: [],
+      cumulativeScores: {},
+      roundResultsHistory: []
+    };
+    const champIndicator = document.getElementById('telemetry-championship-indicator');
+    if (champIndicator) champIndicator.classList.add('hidden');
+    const champLengthItem = document.getElementById('item-championship-length');
+    if (champLengthItem) champLengthItem.classList.add('hidden');
+    const trackSelectItem = document.getElementById('item-track-select');
+    if (trackSelectItem) trackSelectItem.classList.remove('hidden');
+    const modeSelect = document.getElementById('sim-mode-select');
+    if (modeSelect) modeSelect.value = 'single';
+  },
+
+  initChampionship(raceCountValue) {
+    const allTrackKeys = Object.keys(SIM_CONFIG.TRACKS);
+    // Shuffle all track keys to pick distinct tracks
+    const shuffled = [...allTrackKeys].sort(() => Math.random() - 0.5);
+
+    let count = 3;
+    if (raceCountValue === 'all') {
+      count = allTrackKeys.length;
+    } else {
+      count = parseInt(raceCountValue, 10) || 3;
+    }
+    count = Math.min(count, allTrackKeys.length);
+
+    const selectedTracks = shuffled.slice(0, count);
+
+    // Initialize player cumulative scores
+    const cumulative = {};
+    if (typeof F1App !== 'undefined' && F1App.state && F1App.state.players) {
+      F1App.state.players.forEach(p => {
+        cumulative[p.id] = {
+          id: p.id,
+          playerName: p.name,
+          color: p.color,
+          remainingBudget: p.remainingBudget,
+          rosterNames: p.roster.map(r => r.name).join(', '),
+          totalPoints: 0,
+          raceWins: 0,
+          bestSingleFinish: 999
+        };
+      });
+    }
+
+    this.championshipState = {
+      isChampionship: true,
+      totalRaces: count,
+      currentRaceIndex: 0,
+      tracks: selectedTracks,
+      cumulativeScores: cumulative,
+      roundResultsHistory: []
+    };
+
+    // Load first race
+    this.trackKey = selectedTracks[0];
+    this.updateChampionshipTelemetryBanner();
+  },
+
+  updateChampionshipTelemetryBanner() {
+    const champIndicator = document.getElementById('telemetry-championship-indicator');
+    if (!champIndicator) return;
+
+    if (this.championshipState.isChampionship) {
+      champIndicator.classList.remove('hidden');
+      const roundNum = this.championshipState.currentRaceIndex + 1;
+      const totalRaces = this.championshipState.totalRaces;
+      const trackMeta = SIM_CONFIG.TRACKS[this.trackKey];
+      const trackName = trackMeta ? trackMeta.displayName : this.trackKey;
+      champIndicator.textContent = `ROUND ${roundNum}/${totalRaces}: ${trackName.toUpperCase()}`;
+    } else {
+      champIndicator.classList.add('hidden');
+    }
+  },
 
   populateTrackDropdown() {
     const selectEl = document.getElementById('sim-track-select');
@@ -507,8 +598,43 @@ const F1Simulator = {
     // Dynamically populate track selector dropdown from SIM_CONFIG.TRACKS
     this.populateTrackDropdown();
 
+    // Mode Selector setup
+    const modeSelect = document.getElementById('sim-mode-select');
+    const champLengthItem = document.getElementById('item-championship-length');
+    const trackSelectItem = document.getElementById('item-track-select');
+    const racesCountSelect = document.getElementById('sim-races-count-select');
+
+    if (modeSelect) {
+      modeSelect.onchange = (e) => {
+        if (e.target.value === 'championship') {
+          champLengthItem.classList.remove('hidden');
+          trackSelectItem.classList.add('hidden');
+          this.initChampionship(racesCountSelect.value);
+          this.resetSimulation();
+        } else {
+          champLengthItem.classList.add('hidden');
+          trackSelectItem.classList.remove('hidden');
+          this.resetChampionshipState();
+          const selectEl = document.getElementById('sim-track-select');
+          this.trackKey = selectEl && selectEl.value ? selectEl.value : 'monza';
+          this.resetSimulation();
+        }
+      };
+    }
+
+    if (racesCountSelect) {
+      racesCountSelect.onchange = (e) => {
+        if (this.championshipState.isChampionship) {
+          this.initChampionship(e.target.value);
+          this.resetSimulation();
+        }
+      };
+    }
+
     const selectEl = document.getElementById('sim-track-select');
-    this.trackKey = selectEl && selectEl.value ? selectEl.value : 'monza';
+    if (!this.championshipState.isChampionship) {
+      this.trackKey = selectEl && selectEl.value ? selectEl.value : 'monza';
+    }
     this.weather = document.getElementById('sim-weather-select').value || 'dry';
 
     const trackMeta = SIM_CONFIG.TRACKS[this.trackKey];
@@ -519,8 +645,10 @@ const F1Simulator = {
 
     // 2. Event Listeners for Controls
     document.getElementById('sim-track-select').addEventListener('change', (e) => {
-      this.trackKey = e.target.value;
-      this.resetSimulation();
+      if (!this.championshipState.isChampionship) {
+        this.trackKey = e.target.value;
+        this.resetSimulation();
+      }
     });
 
     document.getElementById('sim-weather-select').addEventListener('change', (e) => {
@@ -546,6 +674,24 @@ const F1Simulator = {
       closeQualyBtn.onclick = () => {
         const modal = document.getElementById('qualifying-modal');
         if (modal) modal.classList.add('hidden');
+      };
+    }
+
+    // Return to Home Button - bind click to also reset championship
+    const restartBtn = document.getElementById('btn-restart-app');
+    if (restartBtn) {
+      restartBtn.addEventListener('click', () => {
+        this.resetChampionshipState();
+      });
+    }
+
+    // Mid-Championship Next Race Button
+    const nextRaceBtn = document.getElementById('btn-champ-next-race');
+    if (nextRaceBtn) {
+      nextRaceBtn.onclick = () => {
+        const modal = document.getElementById('champ-race-modal');
+        if (modal) modal.classList.add('hidden');
+        this.advanceToNextChampionshipRace();
       };
     }
 
@@ -1369,6 +1515,45 @@ const F1Simulator = {
     this.finishRace();
   },
 
+  advanceToNextChampionshipRace() {
+    this.championshipState.currentRaceIndex += 1;
+    this.trackKey = this.championshipState.tracks[this.championshipState.currentRaceIndex];
+
+    const trackMeta = SIM_CONFIG.TRACKS[this.trackKey];
+    this.totalLaps = trackMeta && trackMeta.laps ? trackMeta.laps : 15;
+    this.currentLap = 1;
+    this.hasRunQualifying = false;
+    this.raceStarted = false;
+    this.isPlaying = false;
+    this.safetyCarActive = false;
+    this.safetyCarLapsRemaining = 0;
+    this.safetyCarRestartLap = -1;
+    this.lastOvertakePairKey = null;
+    this.fastestLap = { time: Infinity, driverName: null, carId: null };
+    this.commentaryLogs = [];
+    this.commentaryQueue = [];
+    this.lastCommentaryPostTime = 0;
+
+    // Show Start Qualifying button for next race
+    const qualyBtn = document.getElementById('btn-sim-qualifying');
+    if (qualyBtn) qualyBtn.style.display = 'inline-block';
+
+    document.getElementById('btn-sim-play').classList.remove('btn-active');
+    document.getElementById('btn-sim-pause').classList.remove('btn-active');
+    document.getElementById('sim-status-badge').textContent = 'PRE-RACE GRID';
+    document.getElementById('sim-status-badge').style.background = '#E10600';
+    document.getElementById('sim-status-badge').style.color = '#FFF';
+
+    // Rebuild fresh car state (positions, tyres, fuel, DNFs) while preserving players & rosters
+    this.buildDraftedCarsList();
+    this.updateChampionshipTelemetryBanner();
+
+    document.getElementById('commentary-feed').innerHTML = '';
+    const trackName = trackMeta ? trackMeta.displayName : this.trackKey;
+    this.logCommentary(`Championship Round ${this.championshipState.currentRaceIndex + 1}/${this.championshipState.totalRaces} at ${trackName}. Grid formed!`, 'system');
+    this.renderFrame();
+  },
+
   finishRace() {
     this.pause();
     document.getElementById('sim-status-badge').textContent = 'CHECKERED FLAG';
@@ -1377,7 +1562,7 @@ const F1Simulator = {
 
     this.logCommentary('🏁 CHECKERED FLAG: The Grand Prix has concluded!', 'system');
 
-    // 1. Calculate Final Classification
+    // 1. Calculate Final Classification for this race
     const finalClassification = [...this.cars].sort((a, b) => {
       if (a.isDNF && !b.isDNF) return 1;
       if (!a.isDNF && b.isDNF) return -1;
@@ -1406,45 +1591,166 @@ const F1Simulator = {
       car.pointsAwarded = points;
     });
 
-    // 3. Aggregate Team Points & Evaluate Tie-Breakers
-    const teamScores = F1App.state.players.map(player => {
+    // 3. Compute this round's team gains
+    const roundPlayerPoints = {};
+    const roundBestFinish = {};
+    let roundWinnerPlayerId = null;
+
+    if (finalClassification.length > 0) {
+      const raceWinnerCar = finalClassification[0];
+      const winnerPlayer = F1App.state.players.find(p => p.name === raceWinnerCar.playerName);
+      if (winnerPlayer) {
+        roundWinnerPlayerId = winnerPlayer.id;
+      }
+    }
+
+    F1App.state.players.forEach(player => {
       const playerDrivers = finalClassification.filter(c => c.playerName === player.name);
-      const totalPoints = playerDrivers.reduce((sum, d) => sum + d.pointsAwarded, 0);
+      const pointsGain = playerDrivers.reduce((sum, d) => sum + d.pointsAwarded, 0);
+      const positions = playerDrivers.map(d => finalClassification.indexOf(d) + 1);
+      const bestFin = positions.length > 0 ? Math.min(...positions) : 999;
 
-      const driverPositions = playerDrivers.map(d => finalClassification.indexOf(d) + 1);
-      const bestFinish = driverPositions.length > 0 ? Math.min(...driverPositions) : 999;
+      roundPlayerPoints[player.id] = pointsGain;
+      roundBestFinish[player.id] = bestFin;
 
-      return {
-        id: player.id,
-        playerName: player.name,
-        color: player.color,
-        remainingBudget: player.remainingBudget,
-        rosterNames: player.roster.map(r => r.name).join(', '),
-        totalPoints: totalPoints,
-        bestFinish: bestFinish
-      };
+      // Update Cumulative Championship State if in Championship mode
+      if (this.championshipState.isChampionship && this.championshipState.cumulativeScores[player.id]) {
+        const cScore = this.championshipState.cumulativeScores[player.id];
+        cScore.totalPoints += pointsGain;
+        if (roundWinnerPlayerId === player.id) {
+          cScore.raceWins += 1;
+        }
+        if (bestFin < cScore.bestSingleFinish) {
+          cScore.bestSingleFinish = bestFin;
+        }
+      }
     });
 
-    // Tie-Breaker Rules:
+    const isChampionship = this.championshipState.isChampionship;
+    const isFinalRace = !isChampionship || (this.championshipState.currentRaceIndex >= this.championshipState.totalRaces - 1);
+
+    if (isChampionship && !isFinalRace) {
+      // 4A. Show Mid-Championship Results Panel (NO PODIUM CEREMONY YET)
+      this.showMidChampionshipResults(finalClassification, roundPlayerPoints);
+    } else {
+      // 4B. Show Final Results & Championship Podium Ceremony
+      this.showFinalChampionshipPodium(finalClassification, roundPlayerPoints);
+    }
+  },
+
+  showMidChampionshipResults(finalClassification, roundPlayerPoints) {
+    const roundNum = this.championshipState.currentRaceIndex + 1;
+    const totalRaces = this.championshipState.totalRaces;
+
+    const roundTitle = document.getElementById('champ-round-title');
+    if (roundTitle) {
+      const trackMeta = SIM_CONFIG.TRACKS[this.trackKey];
+      const trackName = trackMeta ? trackMeta.displayName : this.trackKey;
+      roundTitle.textContent = `ROUND ${roundNum}/${totalRaces} (${trackName.toUpperCase()}) - RESULTS & STANDINGS`;
+    }
+
+    // Cumulative Standings Sorted by:
     // 1) Total Points (descending)
-    // 2) Highest single-driver finish (best position ascending)
-    // 3) Remaining budget (descending)
-    teamScores.sort((a, b) => {
-      if (b.totalPoints !== a.totalPoints) {
-        return b.totalPoints - a.totalPoints;
-      }
-      if (a.bestFinish !== b.bestFinish) {
-        return a.bestFinish - b.bestFinish;
-      }
+    // 2) Race Wins (descending)
+    // 3) Best Finish (ascending)
+    // 4) Remaining Budget (descending)
+    const cumulativeList = Object.values(this.championshipState.cumulativeScores);
+    cumulativeList.sort((a, b) => {
+      if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+      if (b.raceWins !== a.raceWins) return b.raceWins - a.raceWins;
+      if (a.bestSingleFinish !== b.bestSingleFinish) return a.bestSingleFinish - b.bestSingleFinish;
       return b.remainingBudget - a.remainingBudget;
     });
 
-    const winningPlayer = teamScores[0];
+    const cumTbody = document.getElementById('champ-cumulative-tbody');
+    cumTbody.innerHTML = '';
+    cumulativeList.forEach((team, idx) => {
+      const tr = document.createElement('tr');
+      const roundGain = roundPlayerPoints[team.id] || 0;
+      tr.innerHTML = `
+        <td><strong>P${idx + 1}</strong></td>
+        <td><span class="badge-tag" style="background-color: ${team.color}; color:#FFF;">•</span><strong>${team.playerName}</strong></td>
+        <td style="color:#00E676; font-weight:bold;">+${roundGain} PTS</td>
+        <td><strong style="color:#FFD700; font-size:1.1rem;">${team.totalPoints} PTS</strong></td>
+      `;
+      cumTbody.appendChild(tr);
+    });
+
+    // Driver Classification for this race
+    const driverTbody = document.getElementById('champ-round-driver-tbody');
+    driverTbody.innerHTML = '';
+    finalClassification.forEach((car, index) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>P${index + 1}</strong></td>
+        <td>${car.driverName}</td>
+        <td>${car.playerName}</td>
+        <td><strong>${car.pointsAwarded} PTS</strong></td>
+      `;
+      driverTbody.appendChild(tr);
+    });
+
+    const nextRaceBtnText = document.getElementById('btn-champ-next-race-text');
+    if (nextRaceBtnText) {
+      const nextTrackKey = this.championshipState.tracks[this.championshipState.currentRaceIndex + 1];
+      const nextMeta = SIM_CONFIG.TRACKS[nextTrackKey];
+      nextRaceBtnText.textContent = `NEXT RACE: ${nextMeta ? nextMeta.displayName.toUpperCase() : 'ROUND ' + (roundNum + 1)}`;
+    }
+
+    const modal = document.getElementById('champ-race-modal');
+    if (modal) modal.classList.remove('hidden');
+  },
+
+  showFinalChampionshipPodium(finalClassification, roundPlayerPoints) {
+    let finalStandings = [];
+
+    if (this.championshipState.isChampionship) {
+      // Use Cumulative Scores with tie-breakers:
+      // 1) Total Points
+      // 2) Most race wins
+      // 3) Best single finish
+      // 4) Remaining budget
+      finalStandings = Object.values(this.championshipState.cumulativeScores);
+      finalStandings.sort((a, b) => {
+        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+        if (b.raceWins !== a.raceWins) return b.raceWins - a.raceWins;
+        if (a.bestSingleFinish !== b.bestSingleFinish) return a.bestSingleFinish - b.bestSingleFinish;
+        return b.remainingBudget - a.remainingBudget;
+      });
+    } else {
+      // Single Race Scores
+      finalStandings = F1App.state.players.map(player => {
+        const playerDrivers = finalClassification.filter(c => c.playerName === player.name);
+        const totalPoints = playerDrivers.reduce((sum, d) => sum + d.pointsAwarded, 0);
+        const positions = playerDrivers.map(d => finalClassification.indexOf(d) + 1);
+        const bestFinish = positions.length > 0 ? Math.min(...positions) : 999;
+
+        return {
+          id: player.id,
+          playerName: player.name,
+          color: player.color,
+          remainingBudget: player.remainingBudget,
+          rosterNames: player.roster.map(r => r.name).join(', '),
+          totalPoints: totalPoints,
+          raceWins: bestFinish === 1 ? 1 : 0,
+          bestSingleFinish: bestFinish
+        };
+      });
+
+      finalStandings.sort((a, b) => {
+        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+        if (b.raceWins !== a.raceWins) return b.raceWins - a.raceWins;
+        if (a.bestSingleFinish !== b.bestSingleFinish) return a.bestSingleFinish - b.bestSingleFinish;
+        return b.remainingBudget - a.remainingBudget;
+      });
+    }
+
+    const winningPlayer = finalStandings[0];
 
     // Populate Podium Names & Points
-    const p1Team = teamScores[0] || { playerName: '--', totalPoints: 0 };
-    const p2Team = teamScores[1] || { playerName: '--', totalPoints: 0 };
-    const p3Team = teamScores[2] || { playerName: '--', totalPoints: 0 };
+    const p1Team = finalStandings[0] || { playerName: '--', totalPoints: 0 };
+    const p2Team = finalStandings[1] || { playerName: '--', totalPoints: 0 };
+    const p3Team = finalStandings[2] || { playerName: '--', totalPoints: 0 };
 
     document.getElementById('podium-p1-name').textContent = p1Team.playerName.toUpperCase();
     document.getElementById('podium-p1-pts').textContent = `${p1Team.totalPoints} PTS`;
@@ -1458,7 +1764,7 @@ const F1Simulator = {
     // Render Final Team Table
     const teamTbody = document.getElementById('final-team-tbody');
     teamTbody.innerHTML = '';
-    teamScores.forEach((team, index) => {
+    finalStandings.forEach((team, index) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>P${index + 1}</strong></td>
