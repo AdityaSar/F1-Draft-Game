@@ -498,18 +498,77 @@ const F1Simulator = {
     }
   },
 
+  /**
+   * Builds an SVG path string from an array of 2D coordinates [x, y].
+   */
+  pointsToSvgPath(points) {
+    if (!Array.isArray(points) || points.length === 0) return '';
+    let d = `M ${points[0][0]} ${points[0][1]}`;
+    for (let i = 1; i < points.length; i++) {
+      d += ` L ${points[i][0]} ${points[i][1]}`;
+    }
+    d += ' Z';
+    return d;
+  },
+
+  /**
+   * Computes the signed polygon area in screen coordinates (Shoelace formula).
+   * Positive area => Clockwise in screen coordinates (y-axis pointing down).
+   * Negative area => Counter-Clockwise.
+   */
+  computePolygonArea(points) {
+    if (!Array.isArray(points) || points.length < 3) return 0;
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % points.length];
+      area += (p1[0] * p2[1] - p2[0] * p1[1]);
+    }
+    return area / 2;
+  },
+
   getTrackPathObj(trackKey) {
     if (!this.pathCache[trackKey]) {
       const data = typeof TRACK_DATA !== 'undefined' ? TRACK_DATA[trackKey] : null;
       if (!data) return null;
 
+      // Real F1 circuit directions (CW: Clockwise, CCW: Counter-Clockwise)
+      // Check if raw circuit points run in the opposite direction and reverse once at load time.
+      const realDirections = {
+        albert_park: 'CW', bahrain: 'CW', shanghai: 'CW', barcelona: 'CW', monaco: 'CW',
+        montreal: 'CW', paul_ricard: 'CW', red_bull_ring: 'CW', silverstone: 'CW',
+        hockenheimring: 'CW', hungaroring: 'CW', spa: 'CW', monza: 'CW', sochi: 'CW',
+        suzuka: 'CW', mexico_city: 'CW', nurburgring: 'CW', portimao: 'CW', mugello: 'CW',
+        sepang: 'CW', zandvoort: 'CW', lusail: 'CW',
+        singapore: 'CCW', cota: 'CCW', interlagos: 'CCW', yas_marina: 'CCW',
+        imola: 'CCW', istanbul: 'CCW', jeddah: 'CCW', miami: 'CCW', baku: 'CCW', las_vegas: 'CCW'
+      };
+
+      let pathString = data.path;
+
+      if (Array.isArray(data.points) && data.points.length > 2 && !data._directionChecked) {
+        data._directionChecked = true;
+        const currentDir = this.computePolygonArea(data.points) > 0 ? 'CW' : 'CCW';
+        const expectedDir = realDirections[trackKey];
+
+        if (expectedDir && currentDir !== expectedDir) {
+          // Reverse points array once at load time so cars travel forward in the true driving direction
+          // Keep points[0] (the start/finish line) as index 0, reverse the remaining points.
+          const startPt = data.points[0];
+          const rest = data.points.slice(1).reverse();
+          data.points = [startPt, ...rest];
+          data.path = this.pointsToSvgPath(data.points);
+          pathString = data.path;
+        }
+      }
+
       const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      pathEl.setAttribute('d', data.path);
+      pathEl.setAttribute('d', pathString);
 
       this.pathCache[trackKey] = {
         el: pathEl,
         length: pathEl.getTotalLength(),
-        path2d: new Path2D(data.path),
+        path2d: new Path2D(pathString),
         name: data.name,
         location: data.location,
         lengthMeters: data.lengthMeters
@@ -791,24 +850,42 @@ const F1Simulator = {
 
   /**
    * Staggered 2-column grid formation logic:
-   * P1 pole position, P2 slightly behind on opposite side of track, P3 behind P1, etc.
-   * Staggered longitudinally along circuit progress and staggered laterally across track width.
+   * 1. The start/finish line is at path distance 0 of each track's SVG path.
+   * 2. Cars must start BEHIND the line, on the path just before it:
+   *    P1 at distance (pathLength - 8px), P2 at (pathLength - 24px), P3 at (pathLength - 40px)...
+   *    Formula: dist = (pathLength - (8 + index * 16))
+   *    Using modulo so negative distances wrap correctly:
+   *    car.distance = ((dist % pathLength) + pathLength) % pathLength;
+   *    car.totalDistance = -(8 + index * 16);
+   *    Alternating left and right of the centerline by a few pixels for a staggered two-column grid.
+   * 3. Lap 1 begins at the grid; crossing the start/finish line (multiple of pathLength) starts Lap 2.
    */
   applyGridFormation() {
+    const trackObj = this.getTrackPathObj(this.trackKey);
+    const pathLength = trackObj ? trackObj.length : 1000;
+
     this.cars.forEach((car, index) => {
       car.gridPos = index + 1;
       car.gapToLeader = index * 0.35;
-      // Stagger rows along the starting grid:
-      // Row 0 (P1, P2), Row 1 (P3, P4)...
-      const row = Math.floor(index / 2);
       const isLeft = (index % 2 === 0); // P1, P3, P5 on inside/pole side; P2, P4, P6 on outside
 
-      // Staggered forward positions: P1 is furthest forward, P2 is half a slot behind, P3 is a full row behind
-      const longitudinalOffset = 0.025 - (row * 0.007) - (isLeft ? 0 : 0.0035);
-      car.progress = Math.max(0.0001, longitudinalOffset);
-      car.totalDistanceLaps = car.progress;
+      // Exact pixel distance offset behind the line
+      const offsetBehindLine = 8 + (index * 16);
+      const rawDist = pathLength - offsetBehindLine;
+      const wrappedDist = ((rawDist % pathLength) + pathLength) % pathLength;
 
-      // Lateral offset perpendicular to track line (-4px for left/pole, +4px for right/outside)
+      // car.distance along path (0 to pathLength)
+      car.distance = wrappedDist;
+      // car.totalDistance accumulates total pixels traveled starting from the grid offset
+      car.totalDistance = -offsetBehindLine;
+      // Normalized progress for backwards compatibility
+      car.progress = wrappedDist / pathLength;
+      car.totalDistanceLaps = car.totalDistance / pathLength;
+
+      // Lap 1 begins on the grid
+      car.lap = 1;
+
+      // Lateral offset perpendicular to track line (-4.5px left/pole, +4.5px right/outside)
       car.lateralOffset = isLeft ? -4.5 : 4.5;
     });
   },
@@ -1010,8 +1087,11 @@ const F1Simulator = {
         } else {
           car.status = 'IN PIT';
           // Car crawls down pit lane at 20% speed
-          car.progress += baseFrameDelta * 0.2;
-          car.totalDistanceLaps += baseFrameDelta * 0.2;
+          const pitAdvanceDist = baseFrameDelta * 0.2 * trackObj.length;
+          car.totalDistance = (car.totalDistance || 0) + pitAdvanceDist;
+          car.distance = ((car.totalDistance % trackObj.length) + trackObj.length) % trackObj.length;
+          car.progress = car.distance / trackObj.length;
+          car.totalDistanceLaps = car.totalDistance / trackObj.length;
           return;
         }
       }
@@ -1036,8 +1116,15 @@ const F1Simulator = {
 
       // Advance car progress continuously along path
       const frameAdvance = baseFrameDelta * speedFactor;
-      car.progress += frameAdvance;
-      car.totalDistanceLaps += frameAdvance;
+      const prevTotalDist = car.totalDistance !== undefined ? car.totalDistance : (car.totalDistanceLaps * trackObj.length);
+      const newTotalDist = prevTotalDist + (frameAdvance * trackObj.length);
+      car.totalDistance = newTotalDist;
+
+      // Distance along path (0 to trackObj.length)
+      const wrappedDist = ((newTotalDist % trackObj.length) + trackObj.length) % trackObj.length;
+      car.distance = wrappedDist;
+      car.progress = wrappedDist / trackObj.length;
+      car.totalDistanceLaps = newTotalDist / trackObj.length;
 
       // Burn fuel gradually
       car.fuelLoadKg = Math.max(5.0, car.fuelLoadKg - (SIM_CONFIG.FUEL_BURN_PER_LAP_KG * frameAdvance));
@@ -1047,10 +1134,17 @@ const F1Simulator = {
       car.tyreAge += frameAdvance;
       car.tyreWear = Math.min(1.0, car.tyreWear + (compound.wearRatePerLap * trackInfo.tyreWearMultiplier * frameAdvance));
 
-      // Lap Completion Check
-      if (car.progress >= 1.0) {
-        car.progress -= 1.0;
-        car.lap += 1;
+      // Lap counting: a lap completes when a car's total distance crosses a multiple of pathLength,
+      // so each car visibly crosses the line before Lap 2 starts. Lap 1 must begin at the grid.
+      // E.g. grid is totalDistance in [-offset, 0). Crossing 0 completes Lap 1 -> enters Lap 2.
+      // Crossing pathLength completes Lap 2 -> enters Lap 3, etc.
+      // Math.floor(newTotalDist / pathLength) + 2:
+      // When newTotalDist < 0: floor(-8 / L) = -1 => lap = -1 + 2 = 1.
+      // When newTotalDist >= 0 and < L: floor(0 / L) = 0 => lap = 0 + 2 = 2.
+      const currentLapNumber = Math.floor(newTotalDist / trackObj.length) + 2;
+      if (currentLapNumber > car.lap) {
+        const completedLapNum = car.lap;
+        car.lap = currentLapNumber;
 
         const completedLapTime = theoreticalPace + (Math.random() * 0.3 - 0.15);
         car.lastLapTime = completedLapTime;
@@ -1154,6 +1248,8 @@ const F1Simulator = {
     }
 
     const trackInfo = SIM_CONFIG.TRACKS[this.trackKey] || SIM_CONFIG.TRACKS.monza;
+    const trackObj = this.getTrackPathObj(this.trackKey);
+    const pathLength = trackObj ? trackObj.length : 1000;
     const activeCars = this.cars.filter(c => !c.isDNF && !c.isPitting);
     // Sort by total distance covered descending
     activeCars.sort((a, b) => b.totalDistanceLaps - a.totalDistanceLaps);
@@ -1182,9 +1278,17 @@ const F1Simulator = {
 
           if (Math.random() < overtakeProb) {
             // Swap distance positions
-            const tempDist = ahead.totalDistanceLaps;
+            const tempDistLaps = ahead.totalDistanceLaps;
             ahead.totalDistanceLaps = behind.totalDistanceLaps;
-            behind.totalDistanceLaps = tempDist;
+            behind.totalDistanceLaps = tempDistLaps;
+
+            const tempTotalDist = ahead.totalDistance;
+            ahead.totalDistance = behind.totalDistance;
+            behind.totalDistance = tempTotalDist;
+
+            const tempDist = ahead.distance;
+            ahead.distance = behind.distance;
+            behind.distance = tempDist;
 
             const tempProg = ahead.progress;
             ahead.progress = behind.progress;
@@ -1199,8 +1303,10 @@ const F1Simulator = {
             break;
           } else {
             // Stuck in dirty air behind slower car: cap speed to car ahead
-            behind.progress = Math.min(behind.progress, ahead.progress - 0.002);
-            behind.totalDistanceLaps = Math.min(behind.totalDistanceLaps, ahead.totalDistanceLaps - 0.002);
+            behind.totalDistance = Math.min(behind.totalDistance, ahead.totalDistance - 0.002 * pathLength);
+            behind.totalDistanceLaps = behind.totalDistance / pathLength;
+            behind.distance = ((behind.totalDistance % pathLength) + pathLength) % pathLength;
+            behind.progress = behind.distance / pathLength;
           }
         }
       }
@@ -1291,20 +1397,31 @@ const F1Simulator = {
     this.cars.forEach((car) => {
       if (car.isDNF) return;
 
-      const dist = (car.progress % 1) * trackObj.length;
+      const dist = car.distance !== undefined ? car.distance : (((car.progress % 1) + 1) % 1) * trackObj.length;
       let p = trackObj.el.getPointAtLength(dist);
       const delta = 2;
       const pAhead = trackObj.el.getPointAtLength((dist + delta) % trackObj.length);
       const angle = Math.atan2(pAhead.y - p.y, pAhead.x - p.x);
 
-      // Apply staggered grid lateral offset if not yet racing (or smoothly converge to racing line)
-      if (!this.raceStarted && car.lateralOffset) {
+      // Apply staggered grid lateral offset on grid (and smoothly converge to racing line once racing)
+      let latOffset = 0;
+      if (car.lateralOffset) {
+        if (!this.raceStarted) {
+          latOffset = car.lateralOffset;
+        } else if (car.totalDistance < trackObj.length * 0.15) {
+          // Transition smoothly from grid slots to centerline over first 15% of lap 1
+          const factor = Math.max(0, 1 - (car.totalDistance + 80) / (trackObj.length * 0.15 + 80));
+          latOffset = car.lateralOffset * factor;
+        }
+      }
+
+      if (latOffset !== 0) {
         // Normal vector perpendicular to path tangent
         const nx = -Math.sin(angle);
         const ny = Math.cos(angle);
         p = {
-          x: p.x + nx * car.lateralOffset,
-          y: p.y + ny * car.lateralOffset
+          x: p.x + nx * latOffset,
+          y: p.y + ny * latOffset
         };
       }
 
