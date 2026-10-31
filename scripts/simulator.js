@@ -361,6 +361,15 @@ const F1Simulator = {
 
   safetyCarActive: false,
   safetyCarLapsRemaining: 0,
+  safetyCarRestartLap: -1, // Tracks the lap when the SC restarted to freeze overtakes for 1 full lap
+
+  // Last overtake pair to prevent logging the same pair twice in a row
+  lastOvertakePairKey: null,
+
+  // Rate-limited commentary queue
+  commentaryQueue: [],
+  lastCommentaryPostTime: 0,
+  commentaryTimerId: null,
 
   // Fastest lap holder
   fastestLap: {
@@ -480,8 +489,13 @@ const F1Simulator = {
     this.currentLap = 1;
     this.safetyCarActive = false;
     this.safetyCarLapsRemaining = 0;
+    this.safetyCarRestartLap = -1;
+    this.lastOvertakePairKey = null;
     this.fastestLap = { time: Infinity, driverName: null, carId: null };
     this.commentaryLogs = [];
+    this.commentaryQueue = [];
+    this.lastCommentaryPostTime = 0;
+    this.startCommentaryProcessor();
 
     // Ensure Start Qualifying button is visible before race starts
     const qualyBtn = document.getElementById('btn-sim-qualifying');
@@ -740,6 +754,14 @@ const F1Simulator = {
     this.currentLap = 1;
     this.hasRunQualifying = false;
     this.raceStarted = false;
+    this.safetyCarActive = false;
+    this.safetyCarLapsRemaining = 0;
+    this.safetyCarRestartLap = -1;
+    this.lastOvertakePairKey = null;
+    this.fastestLap = { time: Infinity, driverName: null, carId: null };
+    this.commentaryLogs = [];
+    this.commentaryQueue = [];
+    this.lastCommentaryPostTime = 0;
 
     // Show Start Qualifying button on reset
     const qualyBtn = document.getElementById('btn-sim-qualifying');
@@ -747,9 +769,6 @@ const F1Simulator = {
 
     const trackMeta = SIM_CONFIG.TRACKS[this.trackKey];
     this.totalLaps = trackMeta && trackMeta.laps ? trackMeta.laps : 15;
-    this.safetyCarActive = false;
-    this.safetyCarLapsRemaining = 0;
-    this.fastestLap = { time: Infinity, driverName: null, carId: null };
     this.buildDraftedCarsList();
     this.commentaryLogs = [];
     document.getElementById('commentary-feed').innerHTML = '';
@@ -933,6 +952,7 @@ const F1Simulator = {
       this.safetyCarLapsRemaining -= 0.0035 * this.simSpeed;
       if (this.safetyCarLapsRemaining <= 0) {
         this.safetyCarActive = false;
+        this.safetyCarRestartLap = this.currentLap; // Track restart lap
         this.logCommentary('🟢 SAFETY CAR IN THIS LAP: Track clear, green flag racing resumes!', 'system');
       }
     }
@@ -970,9 +990,22 @@ const F1Simulator = {
    * Overtaking Logic:
    * Car within 1.0s gap with pace advantage has chance to pass based on pace difference & track difficulty.
    * Otherwise stays stuck behind slower car.
+   *
+   * Constraints:
+   * - Disabled on Lap 1
+   * - Disabled for 1 full lap after safety car restart
+   * - Never logs the same driver pair's overtake twice in a row
    */
   processOvertaking() {
     if (this.safetyCarActive) return;
+
+    // Requirement B: Disable overtake checks and overtake commentary on lap 1
+    if (this.currentLap <= 1) return;
+
+    // Requirement B: Disable overtake checks and commentary for 1 lap after any safety car restart
+    if (this.safetyCarRestartLap > 0 && (this.currentLap - this.safetyCarRestartLap) < 1) {
+      return;
+    }
 
     const trackInfo = SIM_CONFIG.TRACKS[this.trackKey] || SIM_CONFIG.TRACKS.monza;
     const activeCars = this.cars.filter(c => !c.isDNF && !c.isPitting);
@@ -1011,7 +1044,12 @@ const F1Simulator = {
             ahead.progress = behind.progress;
             behind.progress = tempProg;
 
-            this.logCommentary(`⚔️ OVERTAKE: ${behind.driverName} (${behind.driverCode}) dives down the inside to pass ${ahead.driverName}!`, 'overtake');
+            // Check duplicate pair: sorted driver ids to identify the exact pair
+            const pairKey = [ahead.id, behind.id].sort().join('-');
+            if (this.lastOvertakePairKey !== pairKey) {
+              this.lastOvertakePairKey = pairKey;
+              this.logCommentary(`⚔️ OVERTAKE: ${behind.driverName} (${behind.driverCode}) dives down the inside to pass ${ahead.driverName}!`, 'overtake');
+            }
             break;
           } else {
             // Stuck in dirty air behind slower car: cap speed to car ahead
@@ -1183,6 +1221,7 @@ const F1Simulator = {
 
   updateLeaderboardUI() {
     const tbody = document.getElementById('sim-leaderboard-tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     const sortedCars = [...this.cars].sort((a, b) => {
@@ -1196,58 +1235,90 @@ const F1Simulator = {
 
     sortedCars.forEach((car, index) => {
       const tr = document.createElement('tr');
+      tr.className = 'timing-tower-row';
 
+      // 1. Position (P1, P2...)
       const posTd = document.createElement('td');
-      posTd.innerHTML = `<strong>P${index + 1}</strong>`;
+      posTd.className = 'col-pos';
+      posTd.innerHTML = `<strong>${index + 1}</strong>`;
 
-      // Driver Name with Tyre Compound Pill
-      const compoundInfo = SIM_CONFIG.TYRE_COMPOUNDS[car.tyreCompound] || SIM_CONFIG.TYRE_COMPOUNDS.MEDIUM;
-      const driverTd = document.createElement('td');
-      driverTd.innerHTML = `
-        <span class="badge-tag" style="background-color: ${car.color}; color:#FFF;">•</span>${car.driverName}
-        <span style="display:inline-block; margin-left:4px; padding:1px 4px; font-size:9px; font-weight:900; border-radius:2px; background:${compoundInfo.color}; color:#000;">${compoundInfo.code}</span>
-      `;
+      // 2. Team Color Bar
+      const colorTd = document.createElement('td');
+      colorTd.className = 'col-team-bar';
+      colorTd.innerHTML = `<span class="team-color-bar" style="background-color: ${car.color};"></span>`;
 
-      const teamTd = document.createElement('td');
-      teamTd.textContent = car.playerName;
+      // 3. 3-Letter Driver Code
+      const codeTd = document.createElement('td');
+      codeTd.className = 'col-code';
+      codeTd.textContent = car.driverCode;
 
-      // Realistic Gap in Seconds
+      // 4. Gap to Leader (+1.245s or LEADER or OUT or PIT)
       const gapTd = document.createElement('td');
+      gapTd.className = 'col-gap';
       if (car.isDNF) {
         gapTd.textContent = 'OUT';
-        gapTd.style.color = '#FF3333';
+        gapTd.className += ' gap-dnf';
+      } else if (car.isPitting) {
+        gapTd.textContent = `PIT`;
+        gapTd.className += ' gap-pit';
       } else if (index === 0) {
         gapTd.textContent = 'LEADER';
-        gapTd.style.color = '#00E676';
+        gapTd.className += ' gap-leader';
       } else {
         const gapLaps = leader.totalDistanceLaps - car.totalDistanceLaps;
-        const gapSec = Math.max(0.1, gapLaps * trackInfo.baseLapTime).toFixed(1);
+        const gapSec = Math.max(0.05, gapLaps * trackInfo.baseLapTime).toFixed(3);
         gapTd.textContent = `+${gapSec}s`;
+        gapTd.className += ' gap-interval';
       }
 
-      // Live Status (RACING, PIT, SC, DNF)
-      const statusTd = document.createElement('td');
-      if (car.isDNF) {
-        statusTd.innerHTML = `<span style="color:#FF3333; font-weight:bold;">DNF</span>`;
-      } else if (car.isPitting) {
-        statusTd.innerHTML = `<span style="color:#29B6F6; font-weight:bold;">PIT (${car.pitStops})</span>`;
-      } else if (this.safetyCarActive) {
-        statusTd.innerHTML = `<span style="color:#FFCC00;">SC</span>`;
-      } else {
-        statusTd.innerHTML = `<span style="color:#00E676;">RACING</span>`;
-      }
+      // 5. Tyre Compound Dot
+      const compoundInfo = SIM_CONFIG.TYRE_COMPOUNDS[car.tyreCompound] || SIM_CONFIG.TYRE_COMPOUNDS.MEDIUM;
+      const tyreTd = document.createElement('td');
+      tyreTd.className = 'col-tyre';
+      tyreTd.innerHTML = `<span class="tyre-dot" style="background-color: ${compoundInfo.color};" title="${compoundInfo.name}">${compoundInfo.code}</span>`;
 
       tr.appendChild(posTd);
-      tr.appendChild(driverTd);
-      tr.appendChild(teamTd);
+      tr.appendChild(colorTd);
+      tr.appendChild(codeTd);
       tr.appendChild(gapTd);
-      tr.appendChild(statusTd);
+      tr.appendChild(tyreTd);
 
       tbody.appendChild(tr);
     });
   },
 
-  logCommentary(text, type = 'normal') {
+  /**
+   * Rate-limited commentary manager:
+   * - Minimum 2.5 seconds between posted messages.
+   * - Queues messages and processes one by one.
+   * - If queue grows beyond 3, drops low-priority messages ('overtake', 'normal').
+   * - Always preserves high-priority messages: 'incident', 'system' (Safety Car, DNF, fastest lap).
+   */
+  startCommentaryProcessor() {
+    if (this.commentaryTimerId) return;
+
+    this.commentaryTimerId = setInterval(() => {
+      this.drainCommentaryQueue();
+    }, 250); // Check queue frequently
+  },
+
+  drainCommentaryQueue() {
+    if (this.commentaryQueue.length === 0) return;
+
+    const now = Date.now();
+    // Minimum 2.5 seconds between messages
+    if (now - this.lastCommentaryPostTime < 2500) {
+      return;
+    }
+
+    const nextMsg = this.commentaryQueue.shift();
+    if (!nextMsg) return;
+
+    this.renderCommentaryItem(nextMsg.text, nextMsg.type);
+    this.lastCommentaryPostTime = Date.now();
+  },
+
+  renderCommentaryItem(text, type) {
     const feed = document.getElementById('commentary-feed');
     if (!feed) return;
     const div = document.createElement('div');
@@ -1255,6 +1326,32 @@ const F1Simulator = {
     div.textContent = text;
     feed.appendChild(div);
     feed.scrollTop = feed.scrollHeight;
+  },
+
+  logCommentary(text, type = 'normal') {
+    const isHighPriority = type === 'incident' || type === 'system';
+
+    const item = { text, type, isHighPriority };
+
+    // If queue has reached limit of 3, drop low-priority items
+    if (this.commentaryQueue.length >= 3) {
+      if (isHighPriority) {
+        // Drop oldest low-priority message to make room
+        const dropIdx = this.commentaryQueue.findIndex(m => !m.isHighPriority);
+        if (dropIdx !== -1) {
+          this.commentaryQueue.splice(dropIdx, 1);
+        }
+        this.commentaryQueue.push(item);
+      } else {
+        // Discard extra low-priority message
+        return;
+      }
+    } else {
+      this.commentaryQueue.push(item);
+    }
+
+    // Attempt immediate drain if interval allows
+    this.drainCommentaryQueue();
   },
 
   runInstantFinish() {

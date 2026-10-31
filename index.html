@@ -234,39 +234,18 @@
 
     <!-- Live Telemetry Visualizer & Broadcast Layout -->
     <div class="sim-main-layout">
-      <!-- Circuit Telemetry Map -->
-      <div class="sim-canvas-container card-panel">
-        <div class="telemetry-overlay">
-          <div class="telemetry-lap">LAP <span id="telemetry-current-lap">0</span> / <span id="telemetry-total-laps">20</span></div>
-          <div id="telemetry-weather-indicator" class="telemetry-weather">☀️ DRY</div>
-        </div>
-        <canvas id="sim-canvas" width="800" height="520"></canvas>
-      </div>
-
-      <!-- Live Broadcast Sidebar -->
-      <div class="sim-sidebar card-panel">
-        <div class="sidebar-tab-header">
-          <span class="tab-title active">LIVE LEADERBOARD</span>
+      <!-- Left Column: Circuit Telemetry Map + Race Control Log -->
+      <div class="sim-left-column">
+        <div class="sim-canvas-container card-panel">
+          <div class="telemetry-overlay">
+            <div class="telemetry-lap">LAP <span id="telemetry-current-lap">0</span> / <span id="telemetry-total-laps">20</span></div>
+            <div id="telemetry-weather-indicator" class="telemetry-weather">☀️ DRY</div>
+          </div>
+          <canvas id="sim-canvas" width="800" height="520"></canvas>
         </div>
 
-        <div class="table-responsive sidebar-table-wrap">
-          <table class="f1-table compact-table" id="sim-leaderboard-table">
-            <thead>
-              <tr>
-                <th>POS</th>
-                <th>DRIVER</th>
-                <th>TEAM</th>
-                <th>GAP</th>
-                <th>STATUS</th>
-              </tr>
-            </thead>
-            <tbody id="sim-leaderboard-tbody">
-              <!-- Dynamically updated per frame -->
-            </tbody>
-          </table>
-        </div>
-
-        <div class="commentary-panel">
+        <!-- Race Control Log relocated below the canvas -->
+        <div class="commentary-panel card-panel">
           <div class="commentary-header">
             <span class="pulse-dot"></span>
             <span>RACE CONTROL LOG & COMMENTARY</span>
@@ -274,6 +253,30 @@
           <div id="commentary-feed" class="commentary-feed">
             <div class="feed-item system">System: Simulation ready. Click Play to start the Grand Prix!</div>
           </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Full-Height Authentic F1 Timing Tower -->
+      <div class="sim-sidebar card-panel timing-tower-panel">
+        <div class="sidebar-tab-header">
+          <span class="tab-title active">TIMING TOWER</span>
+        </div>
+
+        <div class="table-responsive timing-tower-wrap">
+          <table class="f1-table timing-tower-table" id="sim-leaderboard-table">
+            <thead>
+              <tr>
+                <th class="col-pos">POS</th>
+                <th class="col-team-bar"></th>
+                <th class="col-code">DRV</th>
+                <th class="col-gap">GAP</th>
+                <th class="col-tyre">TYRE</th>
+              </tr>
+            </thead>
+            <tbody id="sim-leaderboard-tbody">
+              <!-- Dynamically updated per frame -->
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
