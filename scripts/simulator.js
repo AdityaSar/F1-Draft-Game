@@ -14,21 +14,6 @@
  */
 
 // ============================================================================
-// DRS & OVERTAKING CONSTANTS
-// ============================================================================
-const OFF_DRS_OVERTAKE_FACTOR = 0.2; // Overtake probability outside DRS zones
-const DRS_SPEED_BOOST = 1.06;         // Speed boost inside DRS zones (+6% top speed)
-const DRS_OVERTAKE_GAP_THRESHOLD_SECONDS = 1.0; // Within 1.0s gap required for DRS
-
-// ============================================================================
-// PACE & SPREAD TUNING CONSTANTS
-// ============================================================================
-// Driver skill weight constant: scales skill delta up to ~3.8s per lap
-const SKILL_WEIGHT_CONSTANT = 3.8;
-// Tyre degradation scale constant: scales tyre age effect on lap time
-const TYRE_DEGRADATION_SCALE = 6.2;
-
-// ============================================================================
 // SIMULATION CONSTANTS & CONFIGURATION (Easily Tweakable)
 // ============================================================================
 const SIM_CONFIG = {
@@ -66,8 +51,7 @@ const SIM_CONFIG = {
       laps: 18,
       overtakingDifficulty: 0.90, // Extremely hard to pass
       baseLapTime: 72.0,
-      tyreWearMultiplier: 0.8,
-      drsZones: [{"startFraction":0.795,"endFraction":0.953}]
+      tyreWearMultiplier: 0.8
     },
     monza: {
       displayName: 'Autodromo Nazionale Monza',
@@ -75,8 +59,7 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.22, // Long straights, slipstream & DRS
       baseLapTime: 81.0,
-      tyreWearMultiplier: 0.9,
-      drsZones: [{"startFraction":0.442,"endFraction":0.599}, {"startFraction":0.623,"endFraction":0.834}]
+      tyreWearMultiplier: 0.9
     },
     spa: {
       displayName: 'Circuit de Spa-Francorchamps',
@@ -84,8 +67,7 @@ const SIM_CONFIG = {
       laps: 12,
       overtakingDifficulty: 0.35,
       baseLapTime: 104.0,
-      tyreWearMultiplier: 1.15,
-      drsZones: [{"startFraction":0.091,"endFraction":0.33}, {"startFraction":0.455,"endFraction":0.538}, {"startFraction":0.854,"endFraction":0.941}]
+      tyreWearMultiplier: 1.15
     },
     silverstone: {
       displayName: 'Silverstone Circuit',
@@ -93,8 +75,7 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.45,
       baseLapTime: 87.0,
-      tyreWearMultiplier: 1.25,
-      drsZones: [{"startFraction":0.045,"endFraction":0.156}, {"startFraction":0.202,"endFraction":0.372}, {"startFraction":0.726,"endFraction":0.85}]
+      tyreWearMultiplier: 1.25
     },
     suzuka: {
       displayName: 'Suzuka International Racing Course',
@@ -102,8 +83,7 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.60,
       baseLapTime: 89.0,
-      tyreWearMultiplier: 1.20,
-      drsZones: [{"startFraction":0,"endFraction":0.108}, {"startFraction":0.129,"endFraction":0.347}, {"startFraction":0.654,"endFraction":0.852}]
+      tyreWearMultiplier: 1.20
     },
     interlagos: {
       displayName: 'Autódromo José Carlos Pace',
@@ -111,8 +91,7 @@ const SIM_CONFIG = {
       laps: 18,
       overtakingDifficulty: 0.30,
       baseLapTime: 70.5,
-      tyreWearMultiplier: 1.0,
-      drsZones: [{"startFraction":0.153,"endFraction":0.321}, {"startFraction":0.365,"endFraction":0.451}, {"startFraction":0.852,"endFraction":1}]
+      tyreWearMultiplier: 1.0
     },
     albert_park: {
       displayName: 'Albert Park Circuit',
@@ -120,8 +99,7 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.45,
       baseLapTime: 79.0,
-      tyreWearMultiplier: 1.05,
-      drsZones: [{"startFraction":0.14,"endFraction":0.372}, {"startFraction":0.397,"endFraction":0.655}, {"startFraction":0.704,"endFraction":0.826}]
+      tyreWearMultiplier: 1.05
     },
     bahrain: {
       displayName: 'Bahrain International Circuit',
@@ -129,8 +107,7 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.30,
       baseLapTime: 91.0,
-      tyreWearMultiplier: 1.25,
-      drsZones: [{"startFraction":0.131,"endFraction":0.269}, {"startFraction":0.484,"endFraction":0.628}, {"startFraction":0.873,"endFraction":1}]
+      tyreWearMultiplier: 1.25
     },
     jeddah: {
       displayName: 'Jeddah Corniche Circuit',
@@ -138,8 +115,7 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.35,
       baseLapTime: 88.0,
-      tyreWearMultiplier: 1.10,
-      drsZones: [{"startFraction":0.27,"endFraction":0.377}, {"startFraction":0.507,"endFraction":0.675}, {"startFraction":0.893,"endFraction":1}]
+      tyreWearMultiplier: 1.10
     },
     baku: {
       displayName: 'Baku City Circuit',
@@ -147,8 +123,7 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.20, // 2.2km main straight, low difficulty
       baseLapTime: 102.0,
-      tyreWearMultiplier: 1.0,
-      drsZones: [{"startFraction":0.103,"endFraction":0.23}, {"startFraction":0.537,"endFraction":0.626}, {"startFraction":0.797,"endFraction":1}]
+      tyreWearMultiplier: 1.0
     },
     miami: {
       displayName: 'Miami International Autodrome',
@@ -156,8 +131,7 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.40,
       baseLapTime: 89.0,
-      tyreWearMultiplier: 1.10,
-      drsZones: [{"startFraction":0.279,"endFraction":0.44}, {"startFraction":0.487,"endFraction":0.564}, {"startFraction":0.654,"endFraction":0.894}]
+      tyreWearMultiplier: 1.10
     },
     imola: {
       displayName: 'Autodromo Enzo e Dino Ferrari',
@@ -165,8 +139,7 @@ const SIM_CONFIG = {
       laps: 17,
       overtakingDifficulty: 0.70, // Narrow traditional circuit
       baseLapTime: 75.0,
-      tyreWearMultiplier: 1.05,
-      drsZones: [{"startFraction":0,"endFraction":0.144}, {"startFraction":0.695,"endFraction":0.841}, {"startFraction":0.869,"endFraction":1}]
+      tyreWearMultiplier: 1.05
     },
     barcelona: {
       displayName: 'Circuit de Barcelona-Catalunya',
@@ -174,8 +147,7 @@ const SIM_CONFIG = {
       laps: 17,
       overtakingDifficulty: 0.55,
       baseLapTime: 76.0,
-      tyreWearMultiplier: 1.20,
-      drsZones: [{"startFraction":0,"endFraction":0.155}, {"startFraction":0.595,"endFraction":0.722}]
+      tyreWearMultiplier: 1.20
     },
     montreal: {
       displayName: 'Circuit Gilles-Villeneuve',
@@ -183,8 +155,7 @@ const SIM_CONFIG = {
       laps: 18,
       overtakingDifficulty: 0.38,
       baseLapTime: 73.0,
-      tyreWearMultiplier: 1.0,
-      drsZones: [{"startFraction":0.322,"endFraction":0.601}, {"startFraction":0.672,"endFraction":0.952}]
+      tyreWearMultiplier: 1.0
     },
     red_bull_ring: {
       displayName: 'Red Bull Ring',
@@ -192,8 +163,7 @@ const SIM_CONFIG = {
       laps: 19,
       overtakingDifficulty: 0.32,
       baseLapTime: 65.0,
-      tyreWearMultiplier: 1.0,
-      drsZones: [{"startFraction":0.068,"endFraction":0.307}, {"startFraction":0.337,"endFraction":0.498}, {"startFraction":0.721,"endFraction":0.854}]
+      tyreWearMultiplier: 1.0
     },
     hungaroring: {
       displayName: 'Hungaroring',
@@ -201,8 +171,7 @@ const SIM_CONFIG = {
       laps: 18,
       overtakingDifficulty: 0.80, // High downforce, hard to pass
       baseLapTime: 76.0,
-      tyreWearMultiplier: 1.10,
-      drsZones: [{"startFraction":0.249,"endFraction":0.352}, {"startFraction":0.871,"endFraction":1}]
+      tyreWearMultiplier: 1.10
     },
     zandvoort: {
       displayName: 'Circuit Zandvoort',
@@ -210,8 +179,7 @@ const SIM_CONFIG = {
       laps: 18,
       overtakingDifficulty: 0.75,
       baseLapTime: 71.0,
-      tyreWearMultiplier: 1.20,
-      drsZones: [{"startFraction":0,"endFraction":0.097}, {"startFraction":0.616,"endFraction":0.728}, {"startFraction":0.914,"endFraction":1}]
+      tyreWearMultiplier: 1.20
     },
     singapore: {
       displayName: 'Marina Bay Street Circuit',
@@ -219,8 +187,7 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.85, // Street circuit, high difficulty
       baseLapTime: 95.0,
-      tyreWearMultiplier: 1.15,
-      drsZones: [{"startFraction":0.143,"endFraction":0.249}, {"startFraction":0.295,"endFraction":0.401}, {"startFraction":0.727,"endFraction":0.827}]
+      tyreWearMultiplier: 1.15
     },
     cota: {
       displayName: 'Circuit of the Americas',
@@ -228,8 +195,7 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.45,
       baseLapTime: 96.0,
-      tyreWearMultiplier: 1.20,
-      drsZones: [{"startFraction":0.071,"endFraction":0.245}, {"startFraction":0.313,"endFraction":0.428}, {"startFraction":0.452,"endFraction":0.682}]
+      tyreWearMultiplier: 1.20
     },
     mexico_city: {
       displayName: 'Autódromo Hermanos Rodríguez',
@@ -237,8 +203,7 @@ const SIM_CONFIG = {
       laps: 18,
       overtakingDifficulty: 0.40,
       baseLapTime: 78.0,
-      tyreWearMultiplier: 0.95,
-      drsZones: [{"startFraction":0,"endFraction":0.241}, {"startFraction":0.272,"endFraction":0.483}, {"startFraction":0.538,"endFraction":0.629}]
+      tyreWearMultiplier: 0.95
     },
     las_vegas: {
       displayName: 'Las Vegas Street Circuit',
@@ -246,8 +211,7 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.25, // Long Strip straight, easy overtakes
       baseLapTime: 93.0,
-      tyreWearMultiplier: 0.90,
-      drsZones: [{"startFraction":0.072,"endFraction":0.247}, {"startFraction":0.493,"endFraction":0.772}, {"startFraction":0.848,"endFraction":0.954}]
+      tyreWearMultiplier: 0.90
     },
     lusail: {
       displayName: 'Losail International Circuit',
@@ -255,8 +219,7 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.45,
       baseLapTime: 83.0,
-      tyreWearMultiplier: 1.30,
-      drsZones: [{"startFraction":0,"endFraction":0.108}, {"startFraction":0.846,"endFraction":1}]
+      tyreWearMultiplier: 1.30
     },
     yas_marina: {
       displayName: 'Yas Marina Circuit',
@@ -264,8 +227,7 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.42,
       baseLapTime: 84.0,
-      tyreWearMultiplier: 1.05,
-      drsZones: [{"startFraction":0.259,"endFraction":0.463}, {"startFraction":0.493,"endFraction":0.676}]
+      tyreWearMultiplier: 1.05
     },
     shanghai: {
       displayName: 'Shanghai International Circuit',
@@ -273,8 +235,7 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.35,
       baseLapTime: 94.0,
-      tyreWearMultiplier: 1.20,
-      drsZones: [{"startFraction":0.086,"endFraction":0.223}, {"startFraction":0.395,"endFraction":0.513}, {"startFraction":0.568,"endFraction":0.848}]
+      tyreWearMultiplier: 1.20
     },
     paul_ricard: {
       displayName: 'Circuit Paul Ricard',
@@ -282,8 +243,7 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.40,
       baseLapTime: 92.0,
-      tyreWearMultiplier: 1.15,
-      drsZones: [{"startFraction":0.344,"endFraction":0.495}, {"startFraction":0.515,"endFraction":0.716}, {"startFraction":0.797,"endFraction":0.899}]
+      tyreWearMultiplier: 1.15
     },
     hockenheimring: {
       displayName: 'Hockenheimring',
@@ -291,8 +251,7 @@ const SIM_CONFIG = {
       laps: 17,
       overtakingDifficulty: 0.38,
       baseLapTime: 74.0,
-      tyreWearMultiplier: 1.10,
-      drsZones: [{"startFraction":0.061,"endFraction":0.181}, {"startFraction":0.3,"endFraction":0.456}, {"startFraction":0.655,"endFraction":0.745}]
+      tyreWearMultiplier: 1.10
     },
     nurburgring: {
       displayName: 'Nürburgring GP',
@@ -300,8 +259,7 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.50,
       baseLapTime: 88.0,
-      tyreWearMultiplier: 1.10,
-      drsZones: [{"startFraction":0,"endFraction":0.12}, {"startFraction":0.55,"endFraction":0.661}]
+      tyreWearMultiplier: 1.10
     },
     portimao: {
       displayName: 'Autódromo Internacional do Algarve',
@@ -309,8 +267,7 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.48,
       baseLapTime: 78.0,
-      tyreWearMultiplier: 1.15,
-      drsZones: [{"startFraction":0,"endFraction":0.087}, {"startFraction":0.184,"endFraction":0.311}, {"startFraction":0.851,"endFraction":1}]
+      tyreWearMultiplier: 1.15
     },
     mugello: {
       displayName: 'Autodromo Internazionale del Mugello',
@@ -318,8 +275,7 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.60,
       baseLapTime: 77.0,
-      tyreWearMultiplier: 1.30,
-      drsZones: [{"startFraction":0,"endFraction":0.132}, {"startFraction":0.881,"endFraction":1}]
+      tyreWearMultiplier: 1.30
     },
     sepang: {
       displayName: 'Sepang International Circuit',
@@ -327,8 +283,7 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.35,
       baseLapTime: 93.0,
-      tyreWearMultiplier: 1.25,
-      drsZones: [{"startFraction":0.142,"endFraction":0.231}, {"startFraction":0.432,"endFraction":0.519}, {"startFraction":0.712,"endFraction":0.873}]
+      tyreWearMultiplier: 1.25
     },
     istanbul: {
       displayName: 'Intercity Istanbul Park',
@@ -336,8 +291,7 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.40,
       baseLapTime: 86.0,
-      tyreWearMultiplier: 1.25,
-      drsZones: [{"startFraction":0.258,"endFraction":0.37}, {"startFraction":0.523,"endFraction":0.629}, {"startFraction":0.743,"endFraction":0.871}]
+      tyreWearMultiplier: 1.25
     },
     sochi: {
       displayName: 'Sochi Autodrom',
@@ -345,8 +299,7 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.55,
       baseLapTime: 95.0,
-      tyreWearMultiplier: 0.90,
-      drsZones: [{"startFraction":0.034,"endFraction":0.147}, {"startFraction":0.507,"endFraction":0.582}, {"startFraction":0.61,"endFraction":0.782}]
+      tyreWearMultiplier: 0.90
     }
   },
 
@@ -423,8 +376,6 @@ const F1Simulator = {
 
   // Last overtake pair to prevent logging the same pair twice in a row
   lastOvertakePairKey: null,
-  // Set to track overtakes per car pair per lap (at most one per pair per lap)
-  pairOvertakesThisLap: new Set(),
 
   // Rate-limited commentary queue
   commentaryQueue: [],
@@ -441,12 +392,6 @@ const F1Simulator = {
 
   // Cars Array
   cars: [],
-
-  // Hysteresis-filtered race ranking:
-  // Array of car objects representing the stable race order
-  stableRankedCars: [],
-  // Map of consecutive frames challenger has been ahead: key "behindId-aheadId" -> frameCount
-  rankLeadFrames: new Map(),
 
   // Commentary Log
   commentaryLogs: [],
@@ -584,47 +529,13 @@ const F1Simulator = {
     return area / 2;
   },
 
-  resizeCanvas() {
-    if (!this.canvas) return;
-    const container = this.canvas.parentElement;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const w = Math.floor(rect.width) || 800;
-    const h = Math.floor(rect.height) || 520;
-    if (this.canvas.width !== w || this.canvas.height !== h) {
-      this.canvas.width = w;
-      this.canvas.height = h;
-    }
-  },
-
-  getTrackBounds(points) {
-    if (!Array.isArray(points) || points.length === 0) {
-      return { minX: 0, maxX: 800, minY: 0, maxY: 500, width: 800, height: 500 };
-    }
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i];
-      if (p[0] < minX) minX = p[0];
-      if (p[0] > maxX) maxX = p[0];
-      if (p[1] < minY) minY = p[1];
-      if (p[1] > maxY) maxY = p[1];
-    }
-    return {
-      minX,
-      maxX,
-      minY,
-      maxY,
-      width: Math.max(1, maxX - minX),
-      height: Math.max(1, maxY - minY)
-    };
-  },
-
   getTrackPathObj(trackKey) {
     if (!this.pathCache[trackKey]) {
       const data = typeof TRACK_DATA !== 'undefined' ? TRACK_DATA[trackKey] : null;
       if (!data) return null;
 
       // Real F1 circuit directions (CW: Clockwise, CCW: Counter-Clockwise)
+      // Check if raw circuit points run in the opposite direction and reverse once at load time.
       const realDirections = {
         albert_park: 'CW', bahrain: 'CW', shanghai: 'CW', barcelona: 'CW', monaco: 'CW',
         montreal: 'CW', paul_ricard: 'CW', red_bull_ring: 'CW', silverstone: 'CW',
@@ -635,122 +546,37 @@ const F1Simulator = {
         imola: 'CCW', istanbul: 'CCW', jeddah: 'CCW', miami: 'CCW', baku: 'CCW', las_vegas: 'CCW'
       };
 
+      let pathString = data.path;
+
       if (Array.isArray(data.points) && data.points.length > 2 && !data._directionChecked) {
         data._directionChecked = true;
         const currentDir = this.computePolygonArea(data.points) > 0 ? 'CW' : 'CCW';
         const expectedDir = realDirections[trackKey];
 
         if (expectedDir && currentDir !== expectedDir) {
+          // Reverse points array once at load time so cars travel forward in the true driving direction
+          // Keep points[0] (the start/finish line) as index 0, reverse the remaining points.
           const startPt = data.points[0];
           const rest = data.points.slice(1).reverse();
           data.points = [startPt, ...rest];
+          data.path = this.pointsToSvgPath(data.points);
+          pathString = data.path;
         }
-
-        // Check if track is taller than wide and canvas is wider than tall:
-        // Rotate 90 degrees clockwise (rotate points before drawing)
-        const initialBounds = this.getTrackBounds(data.points);
-        if (initialBounds.height > initialBounds.width) {
-          data.points = data.points.map(([x, y]) => [-y, x]);
-          data.isRotated90 = true;
-        }
-
-        data.path = this.pointsToSvgPath(data.points);
       }
 
-      let pathString = data.path;
       const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       pathEl.setAttribute('d', pathString);
 
-      const bounds = this.getTrackBounds(data.points);
-
-      const pathLength = pathEl.getTotalLength();
-      const trackObj = {
+      this.pathCache[trackKey] = {
         el: pathEl,
-        length: pathLength,
+        length: pathEl.getTotalLength(),
         path2d: new Path2D(pathString),
         name: data.name,
         location: data.location,
-        lengthMeters: data.lengthMeters,
-        points: data.points,
-        bounds: bounds,
-        isRotated90: !!data.isRotated90
+        lengthMeters: data.lengthMeters
       };
-
-      // Find the longest straight section just before the start/finish line (once at load per track)
-      trackObj.startOffset = this.computeTrackStartOffset(trackObj);
-
-      this.pathCache[trackKey] = trackObj;
     }
     return this.pathCache[trackKey];
-  },
-
-  /**
-   * Finds the longest straight section of the track just before the start/finish line.
-   * Returns distance offset along the path (once, at load, per track) so start/finish
-   * line sits cleanly at the end of that straight.
-   */
-  computeTrackStartOffset(trackObj) {
-    const totalLen = trackObj.length;
-    const step = 1.0;
-    const N = Math.floor(totalLen / step);
-    const angles = new Float32Array(N);
-
-    for (let i = 0; i < N; i++) {
-      const s = i * step;
-      const p0 = trackObj.el.getPointAtLength(s);
-      const p1 = trackObj.el.getPointAtLength((s + 4) % totalLen);
-      angles[i] = Math.atan2(p1.y - p0.y, p1.x - p0.x);
-    }
-
-    const isStraight = new Uint8Array(N);
-    for (let i = 0; i < N; i++) {
-      const prev = angles[(i - 5 + N) % N];
-      const next = angles[(i + 5) % N];
-      let diff = Math.abs(next - prev);
-      while (diff > Math.PI) diff -= Math.PI * 2;
-      diff = Math.abs(diff);
-      isStraight[i] = (diff < 0.05) ? 1 : 0;
-    }
-
-    let firstTurn = 0;
-    while (firstTurn < N && isStraight[firstTurn] === 1) firstTurn++;
-
-    const straights = [];
-    let inS = false;
-    let startIdx = 0;
-    for (let count = 0; count < N; count++) {
-      const idx = (firstTurn + count) % N;
-      if (isStraight[idx] === 1) {
-        if (!inS) {
-          inS = true;
-          startIdx = idx;
-        }
-      } else {
-        if (inS) {
-          inS = false;
-          const len = (idx >= startIdx) ? (idx - startIdx) : (N - startIdx + idx);
-          if (len >= 20) {
-            straights.push({ startDist: startIdx * step, endDist: idx * step, len: len * step });
-          }
-        }
-      }
-    }
-    if (inS) {
-      const len = (firstTurn >= startIdx) ? (firstTurn - startIdx) : (N - startIdx + firstTurn);
-      if (len >= 20) {
-        straights.push({ startDist: startIdx * step, endDist: firstTurn * step, len: len * step });
-      }
-    }
-
-    // Find longest straight section near original start/finish line (s=0)
-    const candidates = straights.filter(s => {
-      const distTo0 = (s.startDist > s.endDist) ? 0 : Math.min(s.endDist, totalLen - s.startDist);
-      return distTo0 <= totalLen * 0.25;
-    });
-    candidates.sort((a, b) => b.len - a.len);
-
-    const best = candidates[0] || straights.sort((a, b) => b.len - a.len)[0];
-    return best ? best.endDist : 0;
   },
 
   /**
@@ -807,12 +633,6 @@ const F1Simulator = {
     this.canvas = document.getElementById('sim-canvas');
     this.ctx = this.canvas.getContext('2d');
 
-    this.resizeCanvas();
-    window.addEventListener('resize', () => {
-      this.resizeCanvas();
-      this.renderFrame();
-    });
-
     // Reset Sim State
     this.isPlaying = false;
     this.hasRunQualifying = false;
@@ -823,9 +643,6 @@ const F1Simulator = {
     this.safetyCarLapsRemaining = 0;
     this.safetyCarRestartLap = -1;
     this.lastOvertakePairKey = null;
-    this.pairOvertakesThisLap = new Set();
-    this.stableRankedCars = [];
-    this.rankLeadFrames = new Map();
     this.fastestLap = { time: Infinity, driverName: null, carId: null };
     this.commentaryLogs = [];
     this.commentaryQueue = [];
@@ -1054,22 +871,20 @@ const F1Simulator = {
     const numCars = this.cars.length;
     const numRows = Math.max(1, Math.ceil(numCars / 2));
 
-    const startOffset = trackObj && trackObj.startOffset !== undefined ? trackObj.startOffset : 0;
-
-    // Dynamic grid slot spacing: min(16px, (pathLength * 0.06) / ceil(numCars / 2))
+    // Dynamic grid slot spacing: fits entire grid in 6% of lap length
     const gridSlotSpacing = Math.min(16, (pathLength * 0.06) / numRows);
 
     this.cars.forEach((car, index) => {
       car.gridPos = index + 1; // P1, P2, P3...
       car.gapToLeader = index * 0.2;
 
-      // Odd grid positions (P1, P3, P5...) on right (+3.5px), even (P2, P4, P6...) on left (-3.5px)
+      // Odd positions (P1, P3, P5, ...) on the right (+3.5px), even (P2, P4, P6, ...) on the left (-3.5px)
       const isOddPos = (index % 2 === 0); // index 0 is P1 (odd), index 1 is P2 (even)
       const row = Math.floor(index / 2);
 
-      // Place cars behind the start line along that straight
+      // P1/P2 right behind the start line (~5px). Stagger even cars slightly back by half slot
       const offsetBehindLine = 5 + (row * gridSlotSpacing) + (isOddPos ? 0 : (gridSlotSpacing * 0.45));
-      const rawDist = startOffset - offsetBehindLine;
+      const rawDist = pathLength - offsetBehindLine;
       const wrappedDist = ((rawDist % pathLength) + pathLength) % pathLength;
 
       // car.distance along path (0 to pathLength)
@@ -1083,16 +898,8 @@ const F1Simulator = {
       // Lap 1 begins on the grid
       car.lap = 1;
 
-      // Fixed lane offset: odd on right (+3.5px), even on left (-3.5px)
-      car.laneOffset = isOddPos ? 3.5 : -3.5;
-      car.currentLateralOffset = car.laneOffset;
-      car.targetLateralOffset = car.laneOffset;
-      car.lateralOffset = car.laneOffset;
-
-      // Unique slow sinusoidal drift per car (~1-2.5px)
-      car.driftFreq = 0.5 + Math.random() * 0.7;
-      car.driftPhase = Math.random() * Math.PI * 2;
-      car.driftAmp = 1.0 + Math.random() * 1.5;
+      // Lateral offset: odd on right (+3.5px), even on left (-3.5px)
+      car.lateralOffset = isOddPos ? 3.5 : -3.5;
 
       // Launch reaction time (+-0.15s): all cars launch at lights-out
       car.reactionDelay = (Math.random() * 0.30 - 0.15); // in seconds
@@ -1190,9 +997,6 @@ const F1Simulator = {
     this.safetyCarLapsRemaining = 0;
     this.safetyCarRestartLap = -1;
     this.lastOvertakePairKey = null;
-    this.pairOvertakesThisLap = new Set();
-    this.stableRankedCars = [];
-    this.rankLeadFrames = new Map();
     this.fastestLap = { time: Infinity, driverName: null, carId: null };
     this.commentaryLogs = [];
     this.commentaryQueue = [];
@@ -1239,16 +1043,16 @@ const F1Simulator = {
     // 1. Base track lap time
     let lapTime = trackInfo.baseLapTime;
 
-    // 2. Skill bonus (Driver skill 1 to 100 scales pace using SKILL_WEIGHT_CONSTANT)
-    const skillBonus = (car.skill / 100) * SKILL_WEIGHT_CONSTANT;
+    // 2. Skill bonus (Driver skill 1 to 100 scales pace up to 2.2s per lap)
+    const skillBonus = (car.skill / 100) * 2.2;
     lapTime -= skillBonus;
 
     // 3. Tyre Compound base pace advantage / disadvantage
     lapTime += compound.paceDelta;
 
-    // 4. Tyre wear degradation penalty (grows quadratically with tyre age and TYRE_DEGRADATION_SCALE)
+    // 4. Tyre wear degradation penalty (grows quadratically with tyre age)
     const wearMultiplier = trackInfo.tyreWearMultiplier;
-    const degradationPenalty = Math.pow(car.tyreWear, 1.8) * TYRE_DEGRADATION_SCALE * wearMultiplier;
+    const degradationPenalty = Math.pow(car.tyreWear, 1.8) * 4.5 * wearMultiplier;
     lapTime += degradationPenalty;
 
     // 5. Fuel effect: Car becomes faster as fuel burns down
@@ -1297,62 +1101,6 @@ const F1Simulator = {
     this.cars.forEach((car) => {
       if (car.isDNF) return;
 
-      // --- PART 1 & 2: Dynamic Racing Line & Overtake Lateral Offset ---
-      if (car.currentLateralOffset === undefined) {
-        car.currentLateralOffset = car.laneOffset || 0;
-      }
-
-      // Calculate track curvature & inside turn direction
-      const currentCarDist = car.distance !== undefined ? car.distance : (car.progress % 1) * trackObj.length;
-      const curvData = this.getCurvatureData(trackObj, currentCarDist);
-
-      // 1. Inside apex bias on corners, drifting toward center (0) on straights
-      const insideApexOffset = curvData.turnDir * Math.min(3.5, curvData.diff * 12.0);
-
-      // 2. Slow unique random drift per car (sinusoidal, different freq/phase/amp)
-      if (!car.driftFreq) {
-        car.driftFreq = 0.5 + Math.random() * 0.7;
-        car.driftPhase = Math.random() * Math.PI * 2;
-        car.driftAmp = 1.0 + Math.random() * 1.5;
-      }
-      const carDrift = Math.sin(this.simulatedTimeSeconds * car.driftFreq + car.driftPhase) * car.driftAmp;
-
-      // 3. Slipstream lateral shift when within 1.0s behind car ahead
-      let slipstreamOffset = 0;
-      if (activeCars.length > 1) {
-        const carRankIndex = activeCars.indexOf(car);
-        if (carRankIndex > 0) {
-          const carAhead = activeCars[carRankIndex - 1];
-          const lapGap = carAhead.totalDistanceLaps - car.totalDistanceLaps;
-          const timeGapSec = lapGap * baseLapDurationSeconds;
-          if (timeGapSec > 0 && timeGapSec <= 1.0) {
-            // Shift a few pixels laterally off the car ahead's lateral line
-            const aheadLat = carAhead.lateralOffset || 0;
-            const shiftSide = aheadLat >= 0 ? -2.2 : 2.2;
-            const slipstreamFactor = 1.0 - (timeGapSec / 1.0);
-            slipstreamOffset = shiftSide * slipstreamFactor;
-          }
-        }
-      }
-
-      // 4. Target lateral offset composition
-      let desiredLateralOffset = insideApexOffset + carDrift + slipstreamOffset;
-
-      // During active overtake, override/add the overtake lateral displacement
-      if (car.overtakeState) {
-        desiredLateralOffset += (car.overtakeLateralOffset || 0);
-      }
-
-      // Max step clamp per frame: small step per frame (e.g. max 8.0 px/s * dtSeconds)
-      const maxLatStep = 8.0 * dtSeconds;
-      const latDiff = desiredLateralOffset - car.currentLateralOffset;
-      if (Math.abs(latDiff) <= maxLatStep) {
-        car.currentLateralOffset = desiredLateralOffset;
-      } else {
-        car.currentLateralOffset += Math.sign(latDiff) * maxLatStep;
-      }
-      car.lateralOffset = car.currentLateralOffset;
-
       // Handle Pit Stop Time Loss
       if (car.isPitting) {
         car.pitTimeLossRemaining -= (1 / 60) * this.simSpeed;
@@ -1365,8 +1113,7 @@ const F1Simulator = {
           // Car crawls down pit lane at 20% speed
           const pitAdvanceDist = baseFrameDelta * 0.2 * trackObj.length;
           car.totalDistance = (car.totalDistance || 0) + pitAdvanceDist;
-          const startOffset = trackObj.startOffset || 0;
-          car.distance = (((startOffset + car.totalDistance) % trackObj.length) + trackObj.length) % trackObj.length;
+          car.distance = ((car.totalDistance % trackObj.length) + trackObj.length) % trackObj.length;
           car.progress = car.distance / trackObj.length;
           car.totalDistanceLaps = car.totalDistance / trackObj.length;
           return;
@@ -1379,51 +1126,9 @@ const F1Simulator = {
       let speedFactor = baseLapDurationSeconds / theoreticalPace;
 
       // Curvature Slowdown Factor (using SVG path curvature)
-      const distAlongPath = car.distance !== undefined ? car.distance : (car.progress % 1) * trackObj.length;
+      const distAlongPath = (car.progress % 1) * trackObj.length;
       const cornerFactor = this.getCurvatureSpeedFactor(trackObj, distAlongPath);
       speedFactor *= cornerFactor;
-
-      // Overtake State Machine & Speed Boost:
-      // Passing car moves out over ~1.0s, runs alongside for ~2.5s with higher speed gaining distance gradually,
-      // and then returns to the racing line in front over ~1.0s.
-      if (car.overtakeState) {
-        car.overtakeTimer += dtSeconds;
-        const targetSideOffset = car.overtakeSide || 4.0;
-
-        if (car.overtakeState === 'moving_out') {
-          // Move out to the side over ~1.0 second
-          const progress = Math.min(1.0, car.overtakeTimer / 1.0);
-          car.overtakeLateralOffset = targetSideOffset * progress;
-          if (car.overtakeTimer >= 1.0) {
-            car.overtakeState = 'alongside';
-            car.overtakeTimer = 0;
-          }
-        } else if (car.overtakeState === 'alongside') {
-          // Run alongside for ~2.5 seconds with speed boost (+5.5%) gaining distance gradually
-          car.overtakeLateralOffset = targetSideOffset;
-          speedFactor *= 1.055;
-          if (car.overtakeTimer >= 2.5) {
-            car.overtakeState = 'cutting_in';
-            car.overtakeTimer = 0;
-          }
-        } else if (car.overtakeState === 'cutting_in') {
-          // Return to the racing line in front over ~1.0 second
-          const progress = Math.min(1.0, car.overtakeTimer / 1.0);
-          car.overtakeLateralOffset = targetSideOffset * (1.0 - progress);
-          if (car.overtakeTimer >= 1.0) {
-            car.overtakeState = null;
-            car.overtakeTargetCar = null;
-            car.overtakeTimer = 0;
-            car.overtakeLateralOffset = 0;
-          }
-        }
-      }
-
-      // DRS Zone Speed Boost: No DRS on lap 1 or 1 lap after safety car restart
-      const drsAllowed = this.currentLap > 1 && !(this.safetyCarRestartLap > 0 && (this.currentLap - this.safetyCarRestartLap) < 1) && !this.safetyCarActive;
-      if (drsAllowed && this.isCarInDrsZone(car, trackObj, trackInfo)) {
-        speedFactor *= DRS_SPEED_BOOST;
-      }
 
       // Safety Car Restrictions: Bunch up field, limit max speed to 45%
       if (this.safetyCarActive) {
@@ -1447,9 +1152,8 @@ const F1Simulator = {
       const newTotalDist = prevTotalDist + (frameAdvance * trackObj.length);
       car.totalDistance = newTotalDist;
 
-      // Distance along path with startOffset applied (0 to trackObj.length)
-      const startOffset = trackObj.startOffset || 0;
-      const wrappedDist = (((startOffset + newTotalDist) % trackObj.length) + trackObj.length) % trackObj.length;
+      // Distance along path (0 to trackObj.length)
+      const wrappedDist = ((newTotalDist % trackObj.length) + trackObj.length) % trackObj.length;
       car.distance = wrappedDist;
       car.progress = wrappedDist / trackObj.length;
       car.totalDistanceLaps = newTotalDist / trackObj.length;
@@ -1584,41 +1288,22 @@ const F1Simulator = {
   },
 
   /**
-   * Helper: Check if a car is currently inside a DRS zone on the track
-   */
-  isCarInDrsZone(car, trackObj, trackInfo) {
-    if (!trackInfo || !trackInfo.drsZones || trackInfo.drsZones.length === 0) return false;
-    const pathLength = trackObj ? trackObj.length : 1000;
-    const distAlongPath = car.distance !== undefined ? car.distance : (((car.progress % 1) + 1) % 1) * pathLength;
-    const fraction = (distAlongPath % pathLength) / pathLength;
-
-    return trackInfo.drsZones.some(zone => {
-      if (zone.startFraction <= zone.endFraction) {
-        return fraction >= zone.startFraction && fraction <= zone.endFraction;
-      } else {
-        // Wraps over track start/end
-        return fraction >= zone.startFraction || fraction <= zone.endFraction;
-      }
-    });
-  },
-
-  /**
    * Overtaking Logic:
-   * Trailing car within 1.0s gap of car ahead and has pace advantage.
-   * - Inside DRS zone: normal pass probability plus small speed boost.
-   * - Outside DRS zone: allowed at OFF_DRS_OVERTAKE_FACTOR = 0.2 of DRS probability.
-   * - Per-track overtakingDifficulty scales everything.
-   * - At most one overtake per car pair per lap.
-   * - No overtakes or DRS on lap 1, or for 1 lap after safety car restart.
-   * - Commentary is low priority through rate limiter, never same pair twice in a row.
+   * Car within 1.0s gap with pace advantage has chance to pass based on pace difference & track difficulty.
+   * Otherwise stays stuck behind slower car.
+   *
+   * Constraints:
+   * - Disabled on Lap 1
+   * - Disabled for 1 full lap after safety car restart
+   * - Never logs the same driver pair's overtake twice in a row
    */
   processOvertaking() {
     if (this.safetyCarActive) return;
 
-    // Requirement 4: No overtakes or DRS on lap 1
+    // Requirement B: Disable overtake checks and overtake commentary on lap 1
     if (this.currentLap <= 1) return;
 
-    // Requirement 4: No overtakes or DRS for 1 lap after a safety car restart
+    // Requirement B: Disable overtake checks and commentary for 1 lap after any safety car restart
     if (this.safetyCarRestartLap > 0 && (this.currentLap - this.safetyCarRestartLap) < 1) {
       return;
     }
@@ -1641,71 +1326,55 @@ const F1Simulator = {
       const gapSeconds = lapDelta * baseLapTime;
       behind.gapToLeader = (activeCars[0].totalDistanceLaps - behind.totalDistanceLaps) * baseLapTime;
 
-      // Trailing car must be within 1.0s of the car ahead
-      if (gapSeconds <= DRS_OVERTAKE_GAP_THRESHOLD_SECONDS && gapSeconds > 0) {
+      // DRS Zone proximity condition: within 1.0 second
+      if (gapSeconds <= SIM_CONFIG.OVERTAKE_GAP_THRESHOLD_SECONDS && gapSeconds > 0) {
         const aheadPace = this.computeCarLapPace(ahead);
         const behindPace = this.computeCarLapPace(behind);
         const paceAdvantage = aheadPace - behindPace; // Positive if behind is faster
 
-        // Trailing car must have a pace advantage
-        if (paceAdvantage > 0.05) {
-          // Check pair key and lap limit: at most one overtake per car pair per lap
-          const pairKey = [ahead.id, behind.id].sort().join('-');
-          const lapKey = `${pairKey}-lap${behind.lap}`;
-          if (this.pairOvertakesThisLap.has(lapKey)) {
-            continue; // Already overtook each other on this lap
-          }
-
-          // Check if trailing car is inside a DRS zone
-          const inDrs = this.isCarInDrsZone(behind, trackObj, trackInfo);
-
-          // Base overtake probability inside DRS zone
-          // Scaled by track overtakingDifficulty
+        if (paceAdvantage > 0.2) {
+          // Overtaking probability depends on pace delta and track difficulty
           const difficultyFactor = 1.0 - trackInfo.overtakingDifficulty;
-          const baseDrsProb = (paceAdvantage * 0.09 + 0.03) * difficultyFactor;
+          const overtakeProb = (paceAdvantage * 0.08 + 0.02) * difficultyFactor;
 
-          // Inside DRS: normal pass probability. Outside DRS: OFF_DRS_OVERTAKE_FACTOR = 0.2
-          const overtakeProb = inDrs ? baseDrsProb : (baseDrsProb * OFF_DRS_OVERTAKE_FACTOR);
+          if (Math.random() < overtakeProb) {
+            // Swap distance positions
+            const tempDistLaps = ahead.totalDistanceLaps;
+            ahead.totalDistanceLaps = behind.totalDistanceLaps;
+            behind.totalDistanceLaps = tempDistLaps;
 
-          if (!behind.overtakeState && Math.random() < overtakeProb) {
-            // Record that this pair initiated an overtake on this lap
-            this.pairOvertakesThisLap.add(lapKey);
+            const tempTotalDist = ahead.totalDistance;
+            ahead.totalDistance = behind.totalDistance;
+            behind.totalDistance = tempTotalDist;
 
-            // PART 2: Initiate visible overtake sequence (no instant order swap)
-            // Passing car pulls out to the side over ~1s, runs alongside for ~2.5s with speed boost,
-            // then returns in front. Timing tower order updates when distance naturally passes ahead car.
-            behind.overtakeState = 'moving_out';
-            behind.overtakeTimer = 0;
-            behind.overtakeTargetCar = ahead;
-            // Choose outside or inside lane relative to ahead car
-            const aheadLat = ahead.lateralOffset || 0;
-            behind.overtakeSide = (aheadLat >= 0) ? -4.5 : 4.5;
+            const tempDist = ahead.distance;
+            ahead.distance = behind.distance;
+            behind.distance = tempDist;
 
-            // Commentary feed
+            const tempProg = ahead.progress;
+            ahead.progress = behind.progress;
+            behind.progress = tempProg;
+
+            // Check duplicate pair: sorted driver ids to identify the exact pair
+            const pairKey = [ahead.id, behind.id].sort().join('-');
             if (this.lastOvertakePairKey !== pairKey) {
               this.lastOvertakePairKey = pairKey;
-              const zoneTag = inDrs ? ' [DRS]' : '';
-              this.logCommentary(`⚔️ OVERTAKE${zoneTag}: ${behind.driverName} (${behind.driverCode}) pulls alongside ${ahead.driverName}!`, 'overtake');
+              this.logCommentary(`⚔️ OVERTAKE: ${behind.driverName} (${behind.driverCode}) dives down the inside to pass ${ahead.driverName}!`, 'overtake');
             }
             break;
-          } else if (!behind.overtakeState) {
-            // Stuck in dirty air behind slower car: don't pull distance backwards!
-            // If behind got too close without overtaking, hold pace to not exceed ahead car
-            const minGap = 0.0008 * pathLength;
-            if (behind.totalDistance > ahead.totalDistance - minGap) {
-              behind.totalDistance = Math.min(behind.totalDistance, ahead.totalDistance - 0.0001);
-              behind.totalDistanceLaps = behind.totalDistance / pathLength;
-              const startOffset = trackObj.startOffset || 0;
-              behind.distance = (((startOffset + behind.totalDistance) % pathLength) + pathLength) % pathLength;
-              behind.progress = behind.distance / pathLength;
-            }
+          } else {
+            // Stuck in dirty air behind slower car: cap speed to car ahead
+            behind.totalDistance = Math.min(behind.totalDistance, ahead.totalDistance - 0.002 * pathLength);
+            behind.totalDistanceLaps = behind.totalDistance / pathLength;
+            behind.distance = ((behind.totalDistance % pathLength) + pathLength) % pathLength;
+            behind.progress = behind.distance / pathLength;
           }
         }
       }
     }
   },
 
-  getCurvatureData(trackObj, dist) {
+  getCurvatureSpeedFactor(trackObj, dist) {
     const totalLength = trackObj.length;
     const delta = 8;
     const p0 = trackObj.el.getPointAtLength(dist % totalLength);
@@ -1715,21 +1384,13 @@ const F1Simulator = {
     const a1 = Math.atan2(p1.y - p0.y, p1.x - p0.x);
     const a2 = Math.atan2(p2.y - p1.y, p2.x - p1.x);
 
-    let rawDiff = a2 - a1;
-    while (rawDiff > Math.PI) rawDiff -= Math.PI * 2;
-    while (rawDiff < -Math.PI) rawDiff += Math.PI * 2;
-
-    const diff = Math.abs(rawDiff);
-    // turnDir: +1 if curving left/inside (+normal), -1 if curving right/inside (-normal)
-    const turnDir = Math.sign(rawDiff);
+    let diff = Math.abs(a2 - a1);
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    diff = Math.abs(diff);
 
     // Tight corners slow car down, straights allow higher acceleration
-    const speedFactor = Math.max(0.48, 1.25 - diff * 2.0);
-    return { diff, turnDir, speedFactor };
-  },
-
-  getCurvatureSpeedFactor(trackObj, dist) {
-    return this.getCurvatureData(trackObj, dist).speedFactor;
+    const factor = Math.max(0.48, 1.25 - diff * 2.0);
+    return factor;
   },
 
   triggerSafetyCar() {
@@ -1748,113 +1409,40 @@ const F1Simulator = {
     const trackObj = this.getTrackPathObj(this.trackKey);
     if (!trackObj) return;
 
-    // Compute bounding box and uniform scale to fill 90% of canvas width or height, centered
-    const bounds = trackObj.bounds || this.getTrackBounds(trackObj.points);
-    const trackScale = Math.min((width * 0.90) / bounds.width, (height * 0.90) / bounds.height);
-    const trackCenterX = (bounds.minX + bounds.maxX) / 2;
-    const trackCenterY = (bounds.minY + bounds.maxY) / 2;
-    const tx = (width / 2) - trackCenterX * trackScale;
-    const ty = (height / 2) - trackCenterY * trackScale;
-
-    ctx.save();
-    ctx.translate(tx, ty);
-    ctx.scale(trackScale, trackScale);
-
     // 1. Draw Real GeoJSON Track Circuit Outline
-    // Invert line widths slightly by trackScale so asphalt width remains natural & consistent
-    const lwOuter = 26 / Math.sqrt(trackScale);
-    const lwTrack = 20 / Math.sqrt(trackScale);
-    const lwLine = 12 / Math.sqrt(trackScale);
-    const lwApex = 2 / Math.sqrt(trackScale);
-
     // Outer Asphalt Border (Thick Dark Stroke)
     ctx.strokeStyle = '#0B0B10';
-    ctx.lineWidth = lwOuter;
+    ctx.lineWidth = 26;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.stroke(trackObj.path2d);
 
     ctx.strokeStyle = '#1F1F2C';
-    ctx.lineWidth = lwTrack;
+    ctx.lineWidth = 20;
     ctx.stroke(trackObj.path2d);
 
     // Racing Line Surface (Thinner Lighter Stroke)
     ctx.strokeStyle = '#323246';
-    ctx.lineWidth = lwLine;
+    ctx.lineWidth = 12;
     ctx.stroke(trackObj.path2d);
 
     // Center Red Apex Guide Line
     ctx.strokeStyle = 'rgba(225, 6, 0, 0.4)';
-    ctx.lineWidth = lwApex;
-    ctx.setLineDash([8 / trackScale, 8 / trackScale]);
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 8]);
     ctx.stroke(trackObj.path2d);
     ctx.setLineDash([]);
 
     // Safety Car Yellow Outline overlay
     if (this.safetyCarActive) {
       ctx.strokeStyle = '#FFCC00';
-      ctx.lineWidth = 4 / Math.sqrt(trackScale);
+      ctx.lineWidth = 4;
       ctx.stroke(trackObj.path2d);
     }
 
-    // 1b. Render Neon Green DRS Zones (#00FF66) with "DRS" label at start
-    const currentTrackConfig = SIM_CONFIG.TRACKS[this.trackKey] || {};
-    if (currentTrackConfig.drsZones && currentTrackConfig.drsZones.length > 0) {
-      const totalLen = trackObj.length;
-      ctx.save();
-      ctx.strokeStyle = '#00FF66';
-      ctx.lineWidth = lwLine;
-      ctx.lineCap = 'butt';
-      ctx.lineJoin = 'round';
-      ctx.shadowColor = '#00FF66';
-      ctx.shadowBlur = 6 / Math.sqrt(trackScale);
-
-      currentTrackConfig.drsZones.forEach((zone) => {
-        const sDist = zone.startFraction * totalLen;
-        const eDist = zone.endFraction * totalLen;
-        const segLen = eDist >= sDist ? (eDist - sDist) : (totalLen - sDist + eDist);
-        const step = 4; // Sample every 4px along curve
-        const numSteps = Math.max(2, Math.ceil(segLen / step));
-
-        ctx.beginPath();
-        for (let s = 0; s <= numSteps; s++) {
-          const d = (sDist + (s / numSteps) * segLen) % totalLen;
-          const pt = trackObj.el.getPointAtLength(d);
-          if (s === 0) {
-            ctx.moveTo(pt.x, pt.y);
-          } else {
-            ctx.lineTo(pt.x, pt.y);
-          }
-        }
-        ctx.stroke();
-
-        // Draw small "DRS" label at the start of the zone
-        const startPt = trackObj.el.getPointAtLength(sDist);
-        const tangentPt = trackObj.el.getPointAtLength((sDist + 4) % totalLen);
-        const heading = Math.atan2(tangentPt.y - startPt.y, tangentPt.x - startPt.x);
-        // Normal vector perpendicular to track heading
-        const nx = -Math.sin(heading);
-        const ny = Math.cos(heading);
-        const offsetDist = (lwTrack / 2 + 8) / Math.sqrt(trackScale);
-        const labelX = startPt.x + nx * offsetDist;
-        const labelY = startPt.y + ny * offsetDist;
-
-        ctx.save();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#00FF66';
-        ctx.font = `900 ${Math.max(7, Math.round(9 / Math.sqrt(trackScale)))}px "Chakra Petch", sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('DRS', labelX, labelY);
-        ctx.restore();
-      });
-      ctx.restore();
-    }
-
-    // 2. Start / Finish Line (placed cleanly at the end of that straight)
-    const startOffset = trackObj.startOffset || 0;
-    const startPt = trackObj.el.getPointAtLength(startOffset);
-    const startPtAhead = trackObj.el.getPointAtLength((startOffset + 4) % trackObj.length);
+    // 2. Start / Finish Line
+    const startPt = trackObj.el.getPointAtLength(0);
+    const startPtAhead = trackObj.el.getPointAtLength(4);
     const startAngle = Math.atan2(startPtAhead.y - startPt.y, startPtAhead.x - startPt.x);
 
     ctx.save();
@@ -1871,10 +1459,8 @@ const F1Simulator = {
     const sortedActive = [...this.cars].filter(c => !c.isDNF).sort((a, b) => b.totalDistanceLaps - a.totalDistanceLaps);
     const numTotalCars = this.cars.length;
 
-    // Scale dot size smoothly for big fields and invert trackScale so car dots/labels stay crisp & readable
-    const baseFieldScale = numTotalCars > 12 ? 0.75 : (numTotalCars > 6 ? 0.88 : 1.0);
-    // Relative to a nominal track scale of 1.0:
-    const visualScale = (baseFieldScale / Math.sqrt(trackScale));
+    // Scale dot size smoothly for big fields (e.g. 20 cars: scale ~ 0.75; 4 cars: scale 1.0)
+    const scale = numTotalCars > 12 ? 0.75 : (numTotalCars > 6 ? 0.88 : 1.0);
 
     // Check if cars are spread out (e.g. gap between leader and P8 or last car > 0.08 laps or lap > 1)
     const leaderDist = sortedActive[0] ? sortedActive[0].totalDistanceLaps : 0;
@@ -1883,16 +1469,23 @@ const F1Simulator = {
     this.cars.forEach((car) => {
       if (car.isDNF) return;
 
-      // Single source of truth: car.distance (computed directly from car.totalDistance along path)
-      const dist = car.distance;
+      const dist = car.distance !== undefined ? car.distance : (((car.progress % 1) + 1) % 1) * trackObj.length;
       let p = trackObj.el.getPointAtLength(dist);
       const delta = 2;
       const pAhead = trackObj.el.getPointAtLength((dist + delta) % trackObj.length);
       const angle = Math.atan2(pAhead.y - p.y, pAhead.x - p.x);
 
-      // Requirement 2: Lane offset must NOT depend on rank or which car is ahead.
-      // Fixed lane assigned at the grid kept throughout race, only changing smoothly on overtakes.
-      let latOffset = car.lateralOffset !== undefined ? car.lateralOffset : (car.laneOffset || 0);
+      // Apply staggered grid lateral offset on grid (and smoothly converge to racing line once racing)
+      let latOffset = 0;
+      if (car.lateralOffset) {
+        if (!this.raceStarted) {
+          latOffset = car.lateralOffset;
+        } else if (car.totalDistance < trackObj.length * 0.15) {
+          // Transition smoothly from grid slots to centerline over first 15% of lap 1
+          const factor = Math.max(0, 1 - (car.totalDistance + 80) / (trackObj.length * 0.15 + 80));
+          latOffset = car.lateralOffset * factor;
+        }
+      }
 
       if (latOffset !== 0) {
         // Normal vector perpendicular to path tangent
@@ -1904,14 +1497,10 @@ const F1Simulator = {
         };
       }
 
-      // Store dot coordinates for label placement pass
-      car._renderPoint = p;
-
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(angle);
-      // Make car dots about 30% smaller, scaled with the track (0.70x factor)
-      ctx.scale(visualScale * 0.70, visualScale * 0.70);
+      ctx.scale(scale, scale);
 
       // Outer Glow
       ctx.beginPath();
@@ -1946,156 +1535,24 @@ const F1Simulator = {
       ctx.fill();
 
       ctx.restore();
+
+      // Driver 3-Letter Label
+      // Part 4: Hide labels outside the top 8 until the cars spread out
+      const currentRank = sortedActive.indexOf(car) + 1;
+      const showLabel = (numTotalCars <= 8) || (currentRank <= 8) || isSpreadOut;
+
+      if (showLabel) {
+        ctx.fillStyle = '#FFFFFF';
+        const fontSize = numTotalCars > 12 ? 8 : (numTotalCars > 8 ? 9 : 10);
+        ctx.font = `900 ${fontSize}px "Chakra Petch", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(car.driverCode, p.x, p.y - (6 * scale + 2));
+        ctx.shadowBlur = 0;
+      }
     });
-
-    // 3b. Render Labels on Top of All Dots with Collision Avoidance
-    // Driver tags shown next to every car in race order
-    const rankedActive = (this.stableRankedCars && this.stableRankedCars.length > 0 ? this.stableRankedCars : this.cars).filter(c => !c.isDNF && c._renderPoint);
-    const placedBoxes = [];
-
-    // Scaled candidate offsets (in world/track coordinates)
-    // When track is scaled by trackScale, visualScale = baseFieldScale / sqrt(trackScale).
-    // In track coordinates, 1 screen pixel = 1 / trackScale.
-    // A readable label box is ~22px wide and ~11px high on screen.
-    const screenPx = 1 / trackScale;
-    const baseR = 15 * screenPx;
-    const diagR = 11 * screenPx;
-
-    // Screen-space label dimensions
-    const fontPt = numTotalCars > 12 ? 8 : (numTotalCars > 8 ? 9 : 10);
-    const labelFontSize = Math.max(6, Math.round(fontPt * screenPx));
-    ctx.font = `900 ${labelFontSize}px "Chakra Petch", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    // Width and height of label bounding box on screen
-    const boxScreenW = fontPt * 3.2; // ~32px screen
-    const boxScreenH = fontPt * 1.6; // ~16px screen
-    const boxW = boxScreenW * screenPx;
-    const boxH = boxScreenH * screenPx;
-
-    // Radius needed so label clears the dot and doesn't overlap adjacent labels:
-    // Screen radius ~20px for base, ~40px for 2x radius
-    const rBase = 20 * screenPx;
-    const rDiag = 16 * screenPx;
-
-    // Ordered offsets according to Part 3 specifications:
-    // default: above-right, up, down, right, left, up-right, down-left, then the same list at 2x radius
-    const baseOffsets = [
-      { x: rDiag, y: -rDiag }, // default: above-right
-      { x: 0, y: -rBase },     // up
-      { x: 0, y: rBase },      // down
-      { x: rBase, y: 0 },      // right
-      { x: -rBase, y: 0 },     // left
-      { x: rDiag, y: -rDiag }, // up-right
-      { x: -rDiag, y: rDiag }  // down-left
-    ];
-
-    const candidateOffsets = [
-      ...baseOffsets,
-      ...baseOffsets.map(o => ({ x: o.x * 2, y: o.y * 2 }))
-    ];
-
-    // Track bounds for boundary clamping
-    const bMinX = bounds.minX;
-    const bMaxX = bounds.maxX;
-    const bMinY = bounds.minY;
-    const bMaxY = bounds.maxY;
-
-    rankedActive.forEach(car => {
-      const dot = car._renderPoint;
-      if (!dot) return;
-
-      if (!car.chosenOffset) {
-        car.chosenOffset = { x: candidateOffsets[0].x, y: candidateOffsets[0].y };
-        car.currentLabelOffset = { x: candidateOffsets[0].x, y: candidateOffsets[0].y };
-      }
-
-      const overlapsAny = (box) => {
-        return placedBoxes.some(b => {
-          return !(box.x + box.w < b.x || box.x > b.x + b.w || box.y + box.h < b.y || box.y > b.y + b.h);
-        });
-      };
-
-      // Test whether previously chosen offset still fits without overlap
-      let testBox = {
-        x: dot.x + car.chosenOffset.x - boxW / 2,
-        y: dot.y + car.chosenOffset.y - boxH / 2,
-        w: boxW,
-        h: boxH
-      };
-
-      let selectedOffset = car.chosenOffset;
-      if (overlapsAny(testBox)) {
-        let foundFit = false;
-        for (const cand of candidateOffsets) {
-          const candBox = {
-            x: dot.x + cand.x - boxW / 2,
-            y: dot.y + cand.y - boxH / 2,
-            w: boxW,
-            h: boxH
-          };
-          if (!overlapsAny(candBox)) {
-            selectedOffset = { x: cand.x, y: cand.y };
-            foundFit = true;
-            break;
-          }
-        }
-        if (!foundFit) {
-          selectedOffset = { x: candidateOffsets[0].x, y: candidateOffsets[0].y };
-        }
-      }
-
-      car.chosenOffset = selectedOffset;
-
-      // Smooth offset transition over a few frames
-      if (!car.currentLabelOffset) {
-        car.currentLabelOffset = { ...selectedOffset };
-      } else {
-        car.currentLabelOffset.x += (selectedOffset.x - car.currentLabelOffset.x) * 0.35;
-        car.currentLabelOffset.y += (selectedOffset.y - car.currentLabelOffset.y) * 0.35;
-      }
-
-      let labelX = dot.x + car.currentLabelOffset.x;
-      let labelY = dot.y + car.currentLabelOffset.y;
-
-      // Boundary clamping inside canvas / track bounds
-      labelX = Math.max(bMinX + boxW / 2, Math.min(bMaxX - boxW / 2, labelX));
-      labelY = Math.max(bMinY + boxH / 2, Math.min(bMaxY - boxH / 2, labelY));
-
-      placedBoxes.push({
-        x: labelX - boxW / 2,
-        y: labelY - boxH / 2,
-        w: boxW,
-        h: boxH
-      });
-
-      // Draw thin leader line (1px, team color, 60% opacity) when label is > ~12px away
-      const distFromDot = Math.hypot(labelX - dot.x, labelY - dot.y);
-      const thresholdDist = 12 * screenPx;
-      if (distFromDot > thresholdDist) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.strokeStyle = car.color;
-        ctx.globalAlpha = 0.60;
-        ctx.lineWidth = 1.0 * screenPx;
-        ctx.moveTo(dot.x, dot.y);
-        ctx.lineTo(labelX, labelY);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // Draw driver 3-letter code on top of all dots
-      ctx.save();
-      ctx.fillStyle = '#FFFFFF';
-      ctx.shadowColor = '#000000';
-      ctx.shadowBlur = 3;
-      ctx.fillText(car.driverCode, labelX, labelY);
-      ctx.shadowBlur = 0;
-      ctx.restore();
-    });
-
-    ctx.restore(); // Restore track-scale transformation matrix
 
     // 4. Update UI Telemetry Banner
     document.getElementById('telemetry-current-lap').textContent = Math.min(this.currentLap, this.totalLaps);
@@ -2105,62 +1562,17 @@ const F1Simulator = {
     this.updateLeaderboardUI();
   },
 
-  /**
-   * Computes the race order from distance with 5-consecutive-frame hysteresis.
-   * Two cars swap in the order only if the one behind has been ahead in distance
-   * for at least 5 consecutive frames.
-   */
-  updateRankingsWithHysteresis() {
-    // If not initialized, initialize from raw distance order
-    if (!this.stableRankedCars || this.stableRankedCars.length !== this.cars.length) {
-      this.stableRankedCars = [...this.cars].sort((a, b) => {
-        if (a.isDNF && !b.isDNF) return 1;
-        if (!a.isDNF && b.isDNF) return -1;
-        return (b.totalDistance || 0) - (a.totalDistance || 0);
-      });
-      this.rankLeadFrames = new Map();
-      return this.stableRankedCars;
-    }
-
-    // Active cars vs DNF cars
-    // Active cars keep their stable relative order unless a swap condition is met
-    const active = this.stableRankedCars.filter(c => !c.isDNF);
-    const dnf = this.stableRankedCars.filter(c => c.isDNF).sort((a, b) => (b.lapsCompleted || 0) - (a.lapsCompleted || 0));
-
-    // Check adjacent pairs in the active order
-    // In bubble-style pass from top to bottom
-    for (let i = 0; i < active.length - 1; i++) {
-      const ahead = active[i];
-      const behind = active[i + 1];
-
-      // Does the car behind have greater totalDistance than the car ahead?
-      if ((behind.totalDistance || 0) > (ahead.totalDistance || 0)) {
-        const key = `${behind.id}-${ahead.id}`;
-        const frames = (this.rankLeadFrames.get(key) || 0) + 1;
-        this.rankLeadFrames.set(key, frames);
-
-        // Hysteresis threshold: swap only if ahead for at least 5 consecutive frames
-        if (frames >= 5) {
-          active[i] = behind;
-          active[i + 1] = ahead;
-          this.rankLeadFrames.delete(key);
-        }
-      } else {
-        const key = `${behind.id}-${ahead.id}`;
-        this.rankLeadFrames.delete(key);
-      }
-    }
-
-    this.stableRankedCars = [...active, ...dnf];
-    return this.stableRankedCars;
-  },
-
   updateLeaderboardUI() {
     const tbody = document.getElementById('sim-leaderboard-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    const sortedCars = this.updateRankingsWithHysteresis();
+    const sortedCars = [...this.cars].sort((a, b) => {
+      if (a.isDNF && !b.isDNF) return 1;
+      if (!a.isDNF && b.isDNF) return -1;
+      return b.totalDistanceLaps - a.totalDistanceLaps;
+    });
+
     const leader = sortedCars[0];
     const trackInfo = SIM_CONFIG.TRACKS[this.trackKey] || SIM_CONFIG.TRACKS.monza;
 
@@ -2336,9 +1748,6 @@ const F1Simulator = {
     this.safetyCarLapsRemaining = 0;
     this.safetyCarRestartLap = -1;
     this.lastOvertakePairKey = null;
-    this.pairOvertakesThisLap = new Set();
-    this.stableRankedCars = [];
-    this.rankLeadFrames = new Map();
     this.fastestLap = { time: Infinity, driverName: null, carId: null };
     this.commentaryLogs = [];
     this.commentaryQueue = [];
@@ -2379,8 +1788,6 @@ const F1Simulator = {
     // Finishers first (sorted by distance/laps descending).
     // DNF drivers below all finishers, ordered by laps completed (most first).
     const finishers = this.cars.filter(c => !c.isDNF).sort((a, b) => b.totalDistanceLaps - a.totalDistanceLaps);
-
-
     const dnfCars = this.cars.filter(c => c.isDNF).sort((a, b) => (b.lapsCompleted || 0) - (a.lapsCompleted || 0));
     const finalClassification = [...finishers, ...dnfCars];
 

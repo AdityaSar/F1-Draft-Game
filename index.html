@@ -194,14 +194,28 @@
       <!-- Controls Header -->
       <div class="sim-controls-wrapper">
         <div class="sim-control-item">
+          <label for="sim-mode-select">Game Mode</label>
+          <select id="sim-mode-select" class="form-select select-compact">
+            <option value="single" selected>SINGLE RACE</option>
+            <option value="championship">🏆 CHAMPIONSHIP</option>
+          </select>
+        </div>
+
+        <div class="sim-control-item hidden" id="item-championship-length">
+          <label for="sim-races-count-select">Races</label>
+          <select id="sim-races-count-select" class="form-select select-compact">
+            <option value="3" selected>3 Races</option>
+            <option value="5">5 Races</option>
+            <option value="8">8 Races</option>
+            <option value="10">10 Races</option>
+            <option value="all">All Tracks</option>
+          </select>
+        </div>
+
+        <div class="sim-control-item" id="item-track-select">
           <label for="sim-track-select">Track Circuit</label>
           <select id="sim-track-select" class="form-select select-compact">
-            <option value="monaco">Monaco - Circuit de Monaco</option>
-            <option value="monza" selected>Monza - Temple of Speed</option>
-            <option value="spa">Spa - Francorchamps</option>
-            <option value="silverstone">Silverstone - GP Circuit</option>
-            <option value="suzuka">Suzuka - International Racing Course</option>
-            <option value="interlagos">Interlagos - Autódromo José Carlos Pace</option>
+            <!-- Dynamically populated from tracks metadata -->
           </select>
         </div>
 
@@ -214,7 +228,8 @@
         </div>
 
         <div class="sim-control-item btn-group">
-          <button id="btn-sim-play" class="btn-sim-ctrl btn-active">PLAY</button>
+          <button id="btn-sim-qualifying" class="btn-sim-ctrl btn-qualy">START QUALIFYING</button>
+          <button id="btn-sim-play" class="btn-sim-ctrl btn-active">START RACE</button>
           <button id="btn-sim-pause" class="btn-sim-ctrl">PAUSE</button>
         </div>
 
@@ -233,30 +248,46 @@
 
     <!-- Live Telemetry Visualizer & Broadcast Layout -->
     <div class="sim-main-layout">
-      <!-- Circuit Telemetry Map -->
-      <div class="sim-canvas-container card-panel">
-        <div class="telemetry-overlay">
+      <!-- Left Column: Circuit Telemetry Map + Race Control Log -->
+      <div class="sim-left-column">
+        <!-- Dedicated Slim Info Bar above Track Canvas (Nothing overlaps the track) -->
+        <div class="sim-info-bar">
           <div class="telemetry-lap">LAP <span id="telemetry-current-lap">0</span> / <span id="telemetry-total-laps">20</span></div>
           <div id="telemetry-weather-indicator" class="telemetry-weather">☀️ DRY</div>
+          <div id="telemetry-championship-indicator" class="telemetry-champ hidden">ROUND 1/3</div>
         </div>
-        <canvas id="sim-canvas" width="800" height="520"></canvas>
+
+        <div class="sim-canvas-container card-panel">
+          <canvas id="sim-canvas" width="800" height="520"></canvas>
+        </div>
+
+        <!-- Race Control Log relocated below the canvas -->
+        <div class="commentary-panel card-panel">
+          <div class="commentary-header">
+            <span class="pulse-dot"></span>
+            <span>RACE CONTROL LOG & COMMENTARY</span>
+          </div>
+          <div id="commentary-feed" class="commentary-feed">
+            <div class="feed-item system">System: Simulation ready. Click Play to start the Grand Prix!</div>
+          </div>
+        </div>
       </div>
 
-      <!-- Live Broadcast Sidebar -->
-      <div class="sim-sidebar card-panel">
+      <!-- Right Column: Full-Height Authentic F1 Timing Tower -->
+      <div class="sim-sidebar card-panel timing-tower-panel">
         <div class="sidebar-tab-header">
-          <span class="tab-title active">LIVE LEADERBOARD</span>
+          <span class="tab-title active">TIMING TOWER</span>
         </div>
 
-        <div class="table-responsive sidebar-table-wrap">
-          <table class="f1-table compact-table" id="sim-leaderboard-table">
+        <div class="table-responsive timing-tower-wrap">
+          <table class="f1-table timing-tower-table" id="sim-leaderboard-table">
             <thead>
               <tr>
-                <th>POS</th>
-                <th>DRIVER</th>
-                <th>TEAM</th>
-                <th>GAP</th>
-                <th>STATUS</th>
+                <th class="col-pos">POS</th>
+                <th class="col-team-bar"></th>
+                <th class="col-code">DRV</th>
+                <th class="col-gap">GAP</th>
+                <th class="col-tyre">TYRE</th>
               </tr>
             </thead>
             <tbody id="sim-leaderboard-tbody">
@@ -264,14 +295,99 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
 
-        <div class="commentary-panel">
-          <div class="commentary-header">
-            <span class="pulse-dot"></span>
-            <span>RACE CONTROL LOG & COMMENTARY</span>
+    <!-- QUALIFYING RESULTS MODAL -->
+    <div id="qualifying-modal" class="modal-overlay hidden">
+      <div class="modal-card modal-large modal-scrollable">
+        <div class="modal-card-inner">
+          <div class="modal-header">
+            <span class="modal-tag">OFFICIAL QUALIFYING CLASSIFICATION</span>
+            <h2 class="driver-spotlight" style="font-size: 1.8rem;">STARTING GRID</h2>
           </div>
-          <div id="commentary-feed" class="commentary-feed">
-            <div class="feed-item system">System: Simulation ready. Click Play to start the Grand Prix!</div>
+
+          <div class="table-responsive max-height-300">
+            <table class="f1-table compact-table" id="qualifying-results-table">
+              <thead>
+                <tr>
+                  <th>GRID</th>
+                  <th>DRIVER</th>
+                  <th>PLAYER</th>
+                  <th>BEST LAP</th>
+                  <th>GAP</th>
+                </tr>
+              </thead>
+              <tbody id="qualifying-results-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="modal-actions mt-20">
+            <button type="button" id="btn-close-qualifying" class="btn-primary btn-full">
+              <span>CONFIRM GRID & CONTINUE</span>
+              <span class="cta-arrow">➔</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MID-CHAMPIONSHIP RACE RESULTS MODAL (Between Races) -->
+    <div id="champ-race-modal" class="modal-overlay hidden">
+      <div class="modal-card modal-large modal-scrollable">
+        <div class="modal-card-inner">
+          <div class="modal-header text-center">
+            <span class="modal-tag text-gold">🏆 CHAMPIONSHIP ROUND COMPLETE</span>
+            <h2 id="champ-round-title" class="driver-spotlight" style="font-size: 1.8rem;">RACE 1 RESULTS & STANDINGS</h2>
+          </div>
+
+          <div class="results-grid">
+            <!-- Cumulative Championship Standings -->
+            <div class="results-box">
+              <h3>CUMULATIVE CHAMPIONSHIP STANDINGS</h3>
+              <table class="f1-table" id="champ-cumulative-table">
+                <thead>
+                  <tr>
+                    <th>POS</th>
+                    <th>PLAYER</th>
+                    <th>ROUND GAIN</th>
+                    <th>TOTAL POINTS</th>
+                  </tr>
+                </thead>
+                <tbody id="champ-cumulative-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- This Race Driver Classification -->
+            <div class="results-box">
+              <h3>RACE CLASSIFICATION & POINTS</h3>
+              <div class="table-responsive max-height-300">
+                <table class="f1-table compact-table" id="champ-round-driver-table">
+                  <thead>
+                    <tr>
+                      <th>POS</th>
+                      <th>DRIVER</th>
+                      <th>PLAYER</th>
+                      <th>POINTS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="champ-round-driver-tbody">
+                    <!-- Dynamically populated -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions mt-20">
+            <button type="button" id="btn-champ-next-race" class="btn-primary btn-full">
+              <span id="btn-champ-next-race-text">NEXT RACE</span>
+              <span class="cta-arrow">➔</span>
+            </button>
           </div>
         </div>
       </div>
