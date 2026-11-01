@@ -529,13 +529,47 @@ const F1Simulator = {
     return area / 2;
   },
 
+  resizeCanvas() {
+    if (!this.canvas) return;
+    const container = this.canvas.parentElement;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const w = Math.floor(rect.width) || 800;
+    const h = Math.floor(rect.height) || 520;
+    if (this.canvas.width !== w || this.canvas.height !== h) {
+      this.canvas.width = w;
+      this.canvas.height = h;
+    }
+  },
+
+  getTrackBounds(points) {
+    if (!Array.isArray(points) || points.length === 0) {
+      return { minX: 0, maxX: 800, minY: 0, maxY: 500, width: 800, height: 500 };
+    }
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      if (p[0] < minX) minX = p[0];
+      if (p[0] > maxX) maxX = p[0];
+      if (p[1] < minY) minY = p[1];
+      if (p[1] > maxY) maxY = p[1];
+    }
+    return {
+      minX,
+      maxX,
+      minY,
+      maxY,
+      width: Math.max(1, maxX - minX),
+      height: Math.max(1, maxY - minY)
+    };
+  },
+
   getTrackPathObj(trackKey) {
     if (!this.pathCache[trackKey]) {
       const data = typeof TRACK_DATA !== 'undefined' ? TRACK_DATA[trackKey] : null;
       if (!data) return null;
 
       // Real F1 circuit directions (CW: Clockwise, CCW: Counter-Clockwise)
-      // Check if raw circuit points run in the opposite direction and reverse once at load time.
       const realDirections = {
         albert_park: 'CW', bahrain: 'CW', shanghai: 'CW', barcelona: 'CW', monaco: 'CW',
         montreal: 'CW', paul_ricard: 'CW', red_bull_ring: 'CW', silverstone: 'CW',
@@ -546,26 +580,33 @@ const F1Simulator = {
         imola: 'CCW', istanbul: 'CCW', jeddah: 'CCW', miami: 'CCW', baku: 'CCW', las_vegas: 'CCW'
       };
 
-      let pathString = data.path;
-
       if (Array.isArray(data.points) && data.points.length > 2 && !data._directionChecked) {
         data._directionChecked = true;
         const currentDir = this.computePolygonArea(data.points) > 0 ? 'CW' : 'CCW';
         const expectedDir = realDirections[trackKey];
 
         if (expectedDir && currentDir !== expectedDir) {
-          // Reverse points array once at load time so cars travel forward in the true driving direction
-          // Keep points[0] (the start/finish line) as index 0, reverse the remaining points.
           const startPt = data.points[0];
           const rest = data.points.slice(1).reverse();
           data.points = [startPt, ...rest];
-          data.path = this.pointsToSvgPath(data.points);
-          pathString = data.path;
         }
+
+        // Check if track is taller than wide and canvas is wider than tall:
+        // Rotate 90 degrees clockwise (rotate points before drawing)
+        const initialBounds = this.getTrackBounds(data.points);
+        if (initialBounds.height > initialBounds.width) {
+          data.points = data.points.map(([x, y]) => [-y, x]);
+          data.isRotated90 = true;
+        }
+
+        data.path = this.pointsToSvgPath(data.points);
       }
 
+      let pathString = data.path;
       const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       pathEl.setAttribute('d', pathString);
+
+      const bounds = this.getTrackBounds(data.points);
 
       this.pathCache[trackKey] = {
         el: pathEl,
@@ -573,7 +614,10 @@ const F1Simulator = {
         path2d: new Path2D(pathString),
         name: data.name,
         location: data.location,
-        lengthMeters: data.lengthMeters
+        lengthMeters: data.lengthMeters,
+        points: data.points,
+        bounds: bounds,
+        isRotated90: !!data.isRotated90
       };
     }
     return this.pathCache[trackKey];
@@ -632,6 +676,12 @@ const F1Simulator = {
   initSimulator() {
     this.canvas = document.getElementById('sim-canvas');
     this.ctx = this.canvas.getContext('2d');
+
+    this.resizeCanvas();
+    window.addEventListener('resize', () => {
+      this.resizeCanvas();
+      this.renderFrame();
+    });
 
     // Reset Sim State
     this.isPlaying = false;
@@ -1409,34 +1459,52 @@ const F1Simulator = {
     const trackObj = this.getTrackPathObj(this.trackKey);
     if (!trackObj) return;
 
+    // Compute bounding box and uniform scale to fill 90% of canvas width or height, centered
+    const bounds = trackObj.bounds || this.getTrackBounds(trackObj.points);
+    const trackScale = Math.min((width * 0.90) / bounds.width, (height * 0.90) / bounds.height);
+    const trackCenterX = (bounds.minX + bounds.maxX) / 2;
+    const trackCenterY = (bounds.minY + bounds.maxY) / 2;
+    const tx = (width / 2) - trackCenterX * trackScale;
+    const ty = (height / 2) - trackCenterY * trackScale;
+
+    ctx.save();
+    ctx.translate(tx, ty);
+    ctx.scale(trackScale, trackScale);
+
     // 1. Draw Real GeoJSON Track Circuit Outline
+    // Invert line widths slightly by trackScale so asphalt width remains natural & consistent
+    const lwOuter = 26 / Math.sqrt(trackScale);
+    const lwTrack = 20 / Math.sqrt(trackScale);
+    const lwLine = 12 / Math.sqrt(trackScale);
+    const lwApex = 2 / Math.sqrt(trackScale);
+
     // Outer Asphalt Border (Thick Dark Stroke)
     ctx.strokeStyle = '#0B0B10';
-    ctx.lineWidth = 26;
+    ctx.lineWidth = lwOuter;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.stroke(trackObj.path2d);
 
     ctx.strokeStyle = '#1F1F2C';
-    ctx.lineWidth = 20;
+    ctx.lineWidth = lwTrack;
     ctx.stroke(trackObj.path2d);
 
     // Racing Line Surface (Thinner Lighter Stroke)
     ctx.strokeStyle = '#323246';
-    ctx.lineWidth = 12;
+    ctx.lineWidth = lwLine;
     ctx.stroke(trackObj.path2d);
 
     // Center Red Apex Guide Line
     ctx.strokeStyle = 'rgba(225, 6, 0, 0.4)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 8]);
+    ctx.lineWidth = lwApex;
+    ctx.setLineDash([8 / trackScale, 8 / trackScale]);
     ctx.stroke(trackObj.path2d);
     ctx.setLineDash([]);
 
     // Safety Car Yellow Outline overlay
     if (this.safetyCarActive) {
       ctx.strokeStyle = '#FFCC00';
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 4 / Math.sqrt(trackScale);
       ctx.stroke(trackObj.path2d);
     }
 
@@ -1459,8 +1527,10 @@ const F1Simulator = {
     const sortedActive = [...this.cars].filter(c => !c.isDNF).sort((a, b) => b.totalDistanceLaps - a.totalDistanceLaps);
     const numTotalCars = this.cars.length;
 
-    // Scale dot size smoothly for big fields (e.g. 20 cars: scale ~ 0.75; 4 cars: scale 1.0)
-    const scale = numTotalCars > 12 ? 0.75 : (numTotalCars > 6 ? 0.88 : 1.0);
+    // Scale dot size smoothly for big fields and invert trackScale so car dots/labels stay crisp & readable
+    const baseFieldScale = numTotalCars > 12 ? 0.75 : (numTotalCars > 6 ? 0.88 : 1.0);
+    // Relative to a nominal track scale of 1.0:
+    const visualScale = (baseFieldScale / Math.sqrt(trackScale));
 
     // Check if cars are spread out (e.g. gap between leader and P8 or last car > 0.08 laps or lap > 1)
     const leaderDist = sortedActive[0] ? sortedActive[0].totalDistanceLaps : 0;
@@ -1500,7 +1570,7 @@ const F1Simulator = {
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(angle);
-      ctx.scale(scale, scale);
+      ctx.scale(visualScale, visualScale);
 
       // Outer Glow
       ctx.beginPath();
@@ -1543,16 +1613,18 @@ const F1Simulator = {
 
       if (showLabel) {
         ctx.fillStyle = '#FFFFFF';
-        const fontSize = numTotalCars > 12 ? 8 : (numTotalCars > 8 ? 9 : 10);
+        const fontSize = Math.max(7, Math.round((numTotalCars > 12 ? 8 : (numTotalCars > 8 ? 9 : 10)) * visualScale));
         ctx.font = `900 ${fontSize}px "Chakra Petch", sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 4;
-        ctx.fillText(car.driverCode, p.x, p.y - (6 * scale + 2));
+        ctx.fillText(car.driverCode, p.x, p.y - (6 * visualScale + 2));
         ctx.shadowBlur = 0;
       }
     });
+
+    ctx.restore(); // Restore track-scale transformation matrix
 
     // 4. Update UI Telemetry Banner
     document.getElementById('telemetry-current-lap').textContent = Math.min(this.currentLap, this.totalLaps);
