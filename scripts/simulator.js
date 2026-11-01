@@ -608,9 +608,10 @@ const F1Simulator = {
 
       const bounds = this.getTrackBounds(data.points);
 
-      this.pathCache[trackKey] = {
+      const pathLength = pathEl.getTotalLength();
+      const trackObj = {
         el: pathEl,
-        length: pathEl.getTotalLength(),
+        length: pathLength,
         path2d: new Path2D(pathString),
         name: data.name,
         location: data.location,
@@ -619,8 +620,82 @@ const F1Simulator = {
         bounds: bounds,
         isRotated90: !!data.isRotated90
       };
+
+      // Find the longest straight section just before the start/finish line (once at load per track)
+      trackObj.startOffset = this.computeTrackStartOffset(trackObj);
+
+      this.pathCache[trackKey] = trackObj;
     }
     return this.pathCache[trackKey];
+  },
+
+  /**
+   * Finds the longest straight section of the track just before the start/finish line.
+   * Returns distance offset along the path (once, at load, per track) so start/finish
+   * line sits cleanly at the end of that straight.
+   */
+  computeTrackStartOffset(trackObj) {
+    const totalLen = trackObj.length;
+    const step = 1.0;
+    const N = Math.floor(totalLen / step);
+    const angles = new Float32Array(N);
+
+    for (let i = 0; i < N; i++) {
+      const s = i * step;
+      const p0 = trackObj.el.getPointAtLength(s);
+      const p1 = trackObj.el.getPointAtLength((s + 4) % totalLen);
+      angles[i] = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+    }
+
+    const isStraight = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      const prev = angles[(i - 5 + N) % N];
+      const next = angles[(i + 5) % N];
+      let diff = Math.abs(next - prev);
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      diff = Math.abs(diff);
+      isStraight[i] = (diff < 0.05) ? 1 : 0;
+    }
+
+    let firstTurn = 0;
+    while (firstTurn < N && isStraight[firstTurn] === 1) firstTurn++;
+
+    const straights = [];
+    let inS = false;
+    let startIdx = 0;
+    for (let count = 0; count < N; count++) {
+      const idx = (firstTurn + count) % N;
+      if (isStraight[idx] === 1) {
+        if (!inS) {
+          inS = true;
+          startIdx = idx;
+        }
+      } else {
+        if (inS) {
+          inS = false;
+          const len = (idx >= startIdx) ? (idx - startIdx) : (N - startIdx + idx);
+          if (len >= 20) {
+            straights.push({ startDist: startIdx * step, endDist: idx * step, len: len * step });
+          }
+        }
+      }
+    }
+    if (inS) {
+      const len = (firstTurn >= startIdx) ? (firstTurn - startIdx) : (N - startIdx + firstTurn);
+      if (len >= 20) {
+        straights.push({ startDist: startIdx * step, endDist: firstTurn * step, len: len * step });
+      }
+    }
+
+    // Find longest straight section near original start/finish line (s=0)
+    const candidates = straights.filter(s => {
+      const distTo0 = (s.startDist > s.endDist) ? 0 : Math.min(s.endDist, totalLen - s.startDist);
+      return distTo0 <= totalLen * 0.25;
+    });
+    candidates.sort((a, b) => b.len - a.len);
+
+    const best = candidates[0] || straights.sort((a, b) => b.len - a.len)[0];
+    return best ? best.endDist : 0;
   },
 
   /**
@@ -921,20 +996,22 @@ const F1Simulator = {
     const numCars = this.cars.length;
     const numRows = Math.max(1, Math.ceil(numCars / 2));
 
-    // Dynamic grid slot spacing: fits entire grid in 6% of lap length
+    const startOffset = trackObj && trackObj.startOffset !== undefined ? trackObj.startOffset : 0;
+
+    // Dynamic grid slot spacing: min(16px, (pathLength * 0.06) / ceil(numCars / 2))
     const gridSlotSpacing = Math.min(16, (pathLength * 0.06) / numRows);
 
     this.cars.forEach((car, index) => {
       car.gridPos = index + 1; // P1, P2, P3...
       car.gapToLeader = index * 0.2;
 
-      // Odd positions (P1, P3, P5, ...) on the right (+3.5px), even (P2, P4, P6, ...) on the left (-3.5px)
+      // Odd grid positions (P1, P3, P5...) on right (+3.5px), even (P2, P4, P6...) on left (-3.5px)
       const isOddPos = (index % 2 === 0); // index 0 is P1 (odd), index 1 is P2 (even)
       const row = Math.floor(index / 2);
 
-      // P1/P2 right behind the start line (~5px). Stagger even cars slightly back by half slot
+      // Place cars behind the start line along that straight
       const offsetBehindLine = 5 + (row * gridSlotSpacing) + (isOddPos ? 0 : (gridSlotSpacing * 0.45));
-      const rawDist = pathLength - offsetBehindLine;
+      const rawDist = startOffset - offsetBehindLine;
       const wrappedDist = ((rawDist % pathLength) + pathLength) % pathLength;
 
       // car.distance along path (0 to pathLength)
@@ -1163,7 +1240,8 @@ const F1Simulator = {
           // Car crawls down pit lane at 20% speed
           const pitAdvanceDist = baseFrameDelta * 0.2 * trackObj.length;
           car.totalDistance = (car.totalDistance || 0) + pitAdvanceDist;
-          car.distance = ((car.totalDistance % trackObj.length) + trackObj.length) % trackObj.length;
+          const startOffset = trackObj.startOffset || 0;
+          car.distance = (((startOffset + car.totalDistance) % trackObj.length) + trackObj.length) % trackObj.length;
           car.progress = car.distance / trackObj.length;
           car.totalDistanceLaps = car.totalDistance / trackObj.length;
           return;
@@ -1176,7 +1254,7 @@ const F1Simulator = {
       let speedFactor = baseLapDurationSeconds / theoreticalPace;
 
       // Curvature Slowdown Factor (using SVG path curvature)
-      const distAlongPath = (car.progress % 1) * trackObj.length;
+      const distAlongPath = car.distance !== undefined ? car.distance : (car.progress % 1) * trackObj.length;
       const cornerFactor = this.getCurvatureSpeedFactor(trackObj, distAlongPath);
       speedFactor *= cornerFactor;
 
@@ -1202,8 +1280,9 @@ const F1Simulator = {
       const newTotalDist = prevTotalDist + (frameAdvance * trackObj.length);
       car.totalDistance = newTotalDist;
 
-      // Distance along path (0 to trackObj.length)
-      const wrappedDist = ((newTotalDist % trackObj.length) + trackObj.length) % trackObj.length;
+      // Distance along path with startOffset applied (0 to trackObj.length)
+      const startOffset = trackObj.startOffset || 0;
+      const wrappedDist = (((startOffset + newTotalDist) % trackObj.length) + trackObj.length) % trackObj.length;
       car.distance = wrappedDist;
       car.progress = wrappedDist / trackObj.length;
       car.totalDistanceLaps = newTotalDist / trackObj.length;
@@ -1508,9 +1587,10 @@ const F1Simulator = {
       ctx.stroke(trackObj.path2d);
     }
 
-    // 2. Start / Finish Line
-    const startPt = trackObj.el.getPointAtLength(0);
-    const startPtAhead = trackObj.el.getPointAtLength(4);
+    // 2. Start / Finish Line (placed cleanly at the end of that straight)
+    const startOffset = trackObj.startOffset || 0;
+    const startPt = trackObj.el.getPointAtLength(startOffset);
+    const startPtAhead = trackObj.el.getPointAtLength((startOffset + 4) % trackObj.length);
     const startAngle = Math.atan2(startPtAhead.y - startPt.y, startPtAhead.x - startPt.x);
 
     ctx.save();
@@ -1607,9 +1687,13 @@ const F1Simulator = {
       ctx.restore();
 
       // Driver 3-Letter Label
-      // Part 4: Hide labels outside the top 8 until the cars spread out
-      const currentRank = sortedActive.indexOf(car) + 1;
-      const showLabel = (numTotalCars <= 8) || (currentRank <= 8) || isSpreadOut;
+      // Requirement 4: Do not draw driver labels on the grid before the race starts.
+      // After lights out, show labels only for the top 5.
+      let showLabel = false;
+      if (this.raceStarted) {
+        const currentRank = sortedActive.indexOf(car) + 1;
+        showLabel = (currentRank <= 5);
+      }
 
       if (showLabel) {
         ctx.fillStyle = '#FFFFFF';
