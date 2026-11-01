@@ -1816,10 +1816,14 @@ const F1Simulator = {
         };
       }
 
+      // Store dot coordinates for label placement pass
+      car._renderPoint = p;
+
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(angle);
-      ctx.scale(visualScale, visualScale);
+      // Make car dots about 30% smaller, scaled with the track (0.70x factor)
+      ctx.scale(visualScale * 0.70, visualScale * 0.70);
 
       // Outer Glow
       ctx.beginPath();
@@ -1854,27 +1858,153 @@ const F1Simulator = {
       ctx.fill();
 
       ctx.restore();
+    });
 
-      // Driver 3-Letter Label
-      // Requirement 4: Do not draw driver labels on the grid before the race starts.
-      // After lights out, show labels only for the top 5 (using stable hysteresis ranking).
-      let showLabel = false;
-      if (this.raceStarted) {
-        const currentRank = this.stableRankedCars.indexOf(car) + 1;
-        showLabel = (currentRank > 0 && currentRank <= 5);
+    // 3b. Render Labels on Top of All Dots with Collision Avoidance
+    // Driver tags shown next to every car in race order
+    const rankedActive = (this.stableRankedCars && this.stableRankedCars.length > 0 ? this.stableRankedCars : this.cars).filter(c => !c.isDNF && c._renderPoint);
+    const placedBoxes = [];
+
+    // Scaled candidate offsets (in world/track coordinates)
+    // When track is scaled by trackScale, visualScale = baseFieldScale / sqrt(trackScale).
+    // In track coordinates, 1 screen pixel = 1 / trackScale.
+    // A readable label box is ~22px wide and ~11px high on screen.
+    const screenPx = 1 / trackScale;
+    const baseR = 15 * screenPx;
+    const diagR = 11 * screenPx;
+
+    // Screen-space label dimensions
+    const fontPt = numTotalCars > 12 ? 8 : (numTotalCars > 8 ? 9 : 10);
+    const labelFontSize = Math.max(6, Math.round(fontPt * screenPx));
+    ctx.font = `900 ${labelFontSize}px "Chakra Petch", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Width and height of label bounding box on screen
+    const boxScreenW = fontPt * 3.2; // ~32px screen
+    const boxScreenH = fontPt * 1.6; // ~16px screen
+    const boxW = boxScreenW * screenPx;
+    const boxH = boxScreenH * screenPx;
+
+    // Radius needed so label clears the dot and doesn't overlap adjacent labels:
+    // Screen radius ~20px for base, ~40px for 2x radius
+    const rBase = 20 * screenPx;
+    const rDiag = 16 * screenPx;
+
+    // Ordered offsets according to Part 3 specifications:
+    // default: above-right, up, down, right, left, up-right, down-left, then the same list at 2x radius
+    const baseOffsets = [
+      { x: rDiag, y: -rDiag }, // default: above-right
+      { x: 0, y: -rBase },     // up
+      { x: 0, y: rBase },      // down
+      { x: rBase, y: 0 },      // right
+      { x: -rBase, y: 0 },     // left
+      { x: rDiag, y: -rDiag }, // up-right
+      { x: -rDiag, y: rDiag }  // down-left
+    ];
+
+    const candidateOffsets = [
+      ...baseOffsets,
+      ...baseOffsets.map(o => ({ x: o.x * 2, y: o.y * 2 }))
+    ];
+
+    // Track bounds for boundary clamping
+    const bMinX = bounds.minX;
+    const bMaxX = bounds.maxX;
+    const bMinY = bounds.minY;
+    const bMaxY = bounds.maxY;
+
+    rankedActive.forEach(car => {
+      const dot = car._renderPoint;
+      if (!dot) return;
+
+      if (!car.chosenOffset) {
+        car.chosenOffset = { x: candidateOffsets[0].x, y: candidateOffsets[0].y };
+        car.currentLabelOffset = { x: candidateOffsets[0].x, y: candidateOffsets[0].y };
       }
 
-      if (showLabel) {
-        ctx.fillStyle = '#FFFFFF';
-        const fontSize = Math.max(7, Math.round((numTotalCars > 12 ? 8 : (numTotalCars > 8 ? 9 : 10)) * visualScale));
-        ctx.font = `900 ${fontSize}px "Chakra Petch", sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 4;
-        ctx.fillText(car.driverCode, p.x, p.y - (6 * visualScale + 2));
-        ctx.shadowBlur = 0;
+      const overlapsAny = (box) => {
+        return placedBoxes.some(b => {
+          return !(box.x + box.w < b.x || box.x > b.x + b.w || box.y + box.h < b.y || box.y > b.y + b.h);
+        });
+      };
+
+      // Test whether previously chosen offset still fits without overlap
+      let testBox = {
+        x: dot.x + car.chosenOffset.x - boxW / 2,
+        y: dot.y + car.chosenOffset.y - boxH / 2,
+        w: boxW,
+        h: boxH
+      };
+
+      let selectedOffset = car.chosenOffset;
+      if (overlapsAny(testBox)) {
+        let foundFit = false;
+        for (const cand of candidateOffsets) {
+          const candBox = {
+            x: dot.x + cand.x - boxW / 2,
+            y: dot.y + cand.y - boxH / 2,
+            w: boxW,
+            h: boxH
+          };
+          if (!overlapsAny(candBox)) {
+            selectedOffset = { x: cand.x, y: cand.y };
+            foundFit = true;
+            break;
+          }
+        }
+        if (!foundFit) {
+          selectedOffset = { x: candidateOffsets[0].x, y: candidateOffsets[0].y };
+        }
       }
+
+      car.chosenOffset = selectedOffset;
+
+      // Smooth offset transition over a few frames
+      if (!car.currentLabelOffset) {
+        car.currentLabelOffset = { ...selectedOffset };
+      } else {
+        car.currentLabelOffset.x += (selectedOffset.x - car.currentLabelOffset.x) * 0.35;
+        car.currentLabelOffset.y += (selectedOffset.y - car.currentLabelOffset.y) * 0.35;
+      }
+
+      let labelX = dot.x + car.currentLabelOffset.x;
+      let labelY = dot.y + car.currentLabelOffset.y;
+
+      // Boundary clamping inside canvas / track bounds
+      labelX = Math.max(bMinX + boxW / 2, Math.min(bMaxX - boxW / 2, labelX));
+      labelY = Math.max(bMinY + boxH / 2, Math.min(bMaxY - boxH / 2, labelY));
+
+      placedBoxes.push({
+        x: labelX - boxW / 2,
+        y: labelY - boxH / 2,
+        w: boxW,
+        h: boxH
+      });
+
+      // Draw thin leader line (1px, team color, 60% opacity) when label is > ~12px away
+      const distFromDot = Math.hypot(labelX - dot.x, labelY - dot.y);
+      const thresholdDist = 12 * screenPx;
+      if (distFromDot > thresholdDist) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.strokeStyle = car.color;
+        ctx.globalAlpha = 0.60;
+        ctx.lineWidth = 1.0 * screenPx;
+        ctx.moveTo(dot.x, dot.y);
+        ctx.lineTo(labelX, labelY);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw driver 3-letter code on top of all dots
+      ctx.save();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.shadowColor = '#000000';
+      ctx.shadowBlur = 3;
+      ctx.fillText(car.driverCode, labelX, labelY);
+      ctx.shadowBlur = 0;
+      ctx.restore();
     });
 
     ctx.restore(); // Restore track-scale transformation matrix
