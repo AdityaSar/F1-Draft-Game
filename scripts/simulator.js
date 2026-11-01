@@ -21,6 +21,14 @@ const DRS_SPEED_BOOST = 1.06;         // Speed boost inside DRS zones (+6% top s
 const DRS_OVERTAKE_GAP_THRESHOLD_SECONDS = 1.0; // Within 1.0s gap required for DRS
 
 // ============================================================================
+// PACE & SPREAD TUNING CONSTANTS
+// ============================================================================
+// Driver skill weight constant: scales skill delta up to ~3.8s per lap
+const SKILL_WEIGHT_CONSTANT = 3.8;
+// Tyre degradation scale constant: scales tyre age effect on lap time
+const TYRE_DEGRADATION_SCALE = 6.2;
+
+// ============================================================================
 // SIMULATION CONSTANTS & CONFIGURATION (Easily Tweakable)
 // ============================================================================
 const SIM_CONFIG = {
@@ -1081,6 +1089,11 @@ const F1Simulator = {
       car.targetLateralOffset = car.laneOffset;
       car.lateralOffset = car.laneOffset;
 
+      // Unique slow sinusoidal drift per car (~1-2.5px)
+      car.driftFreq = 0.5 + Math.random() * 0.7;
+      car.driftPhase = Math.random() * Math.PI * 2;
+      car.driftAmp = 1.0 + Math.random() * 1.5;
+
       // Launch reaction time (+-0.15s): all cars launch at lights-out
       car.reactionDelay = (Math.random() * 0.30 - 0.15); // in seconds
     });
@@ -1226,16 +1239,16 @@ const F1Simulator = {
     // 1. Base track lap time
     let lapTime = trackInfo.baseLapTime;
 
-    // 2. Skill bonus (Driver skill 1 to 100 scales pace up to 2.2s per lap)
-    const skillBonus = (car.skill / 100) * 2.2;
+    // 2. Skill bonus (Driver skill 1 to 100 scales pace using SKILL_WEIGHT_CONSTANT)
+    const skillBonus = (car.skill / 100) * SKILL_WEIGHT_CONSTANT;
     lapTime -= skillBonus;
 
     // 3. Tyre Compound base pace advantage / disadvantage
     lapTime += compound.paceDelta;
 
-    // 4. Tyre wear degradation penalty (grows quadratically with tyre age)
+    // 4. Tyre wear degradation penalty (grows quadratically with tyre age and TYRE_DEGRADATION_SCALE)
     const wearMultiplier = trackInfo.tyreWearMultiplier;
-    const degradationPenalty = Math.pow(car.tyreWear, 1.8) * 4.5 * wearMultiplier;
+    const degradationPenalty = Math.pow(car.tyreWear, 1.8) * TYRE_DEGRADATION_SCALE * wearMultiplier;
     lapTime += degradationPenalty;
 
     // 5. Fuel effect: Car becomes faster as fuel burns down
@@ -1284,20 +1297,59 @@ const F1Simulator = {
     this.cars.forEach((car) => {
       if (car.isDNF) return;
 
-      // Smooth lane offset transition towards targetLateralOffset over ~1.0 second
+      // --- PART 1 & 2: Dynamic Racing Line & Overtake Lateral Offset ---
       if (car.currentLateralOffset === undefined) {
         car.currentLateralOffset = car.laneOffset || 0;
-        car.targetLateralOffset = car.laneOffset || 0;
       }
-      if (car.currentLateralOffset !== car.targetLateralOffset) {
-        // Shift speed ~7.0 px/sec => 7.0px * 1.0s = full 7px width swap between +3.5 and -3.5 in ~1s
-        const maxShift = 7.0 * dtSeconds;
-        const diff = car.targetLateralOffset - car.currentLateralOffset;
-        if (Math.abs(diff) <= maxShift) {
-          car.currentLateralOffset = car.targetLateralOffset;
-        } else {
-          car.currentLateralOffset += Math.sign(diff) * maxShift;
+
+      // Calculate track curvature & inside turn direction
+      const currentCarDist = car.distance !== undefined ? car.distance : (car.progress % 1) * trackObj.length;
+      const curvData = this.getCurvatureData(trackObj, currentCarDist);
+
+      // 1. Inside apex bias on corners, drifting toward center (0) on straights
+      const insideApexOffset = curvData.turnDir * Math.min(3.5, curvData.diff * 12.0);
+
+      // 2. Slow unique random drift per car (sinusoidal, different freq/phase/amp)
+      if (!car.driftFreq) {
+        car.driftFreq = 0.5 + Math.random() * 0.7;
+        car.driftPhase = Math.random() * Math.PI * 2;
+        car.driftAmp = 1.0 + Math.random() * 1.5;
+      }
+      const carDrift = Math.sin(this.simulatedTimeSeconds * car.driftFreq + car.driftPhase) * car.driftAmp;
+
+      // 3. Slipstream lateral shift when within 1.0s behind car ahead
+      let slipstreamOffset = 0;
+      if (activeCars.length > 1) {
+        const carRankIndex = activeCars.indexOf(car);
+        if (carRankIndex > 0) {
+          const carAhead = activeCars[carRankIndex - 1];
+          const lapGap = carAhead.totalDistanceLaps - car.totalDistanceLaps;
+          const timeGapSec = lapGap * baseLapDurationSeconds;
+          if (timeGapSec > 0 && timeGapSec <= 1.0) {
+            // Shift a few pixels laterally off the car ahead's lateral line
+            const aheadLat = carAhead.lateralOffset || 0;
+            const shiftSide = aheadLat >= 0 ? -2.2 : 2.2;
+            const slipstreamFactor = 1.0 - (timeGapSec / 1.0);
+            slipstreamOffset = shiftSide * slipstreamFactor;
+          }
         }
+      }
+
+      // 4. Target lateral offset composition
+      let desiredLateralOffset = insideApexOffset + carDrift + slipstreamOffset;
+
+      // During active overtake, override/add the overtake lateral displacement
+      if (car.overtakeState) {
+        desiredLateralOffset += (car.overtakeLateralOffset || 0);
+      }
+
+      // Max step clamp per frame: small step per frame (e.g. max 8.0 px/s * dtSeconds)
+      const maxLatStep = 8.0 * dtSeconds;
+      const latDiff = desiredLateralOffset - car.currentLateralOffset;
+      if (Math.abs(latDiff) <= maxLatStep) {
+        car.currentLateralOffset = desiredLateralOffset;
+      } else {
+        car.currentLateralOffset += Math.sign(latDiff) * maxLatStep;
       }
       car.lateralOffset = car.currentLateralOffset;
 
@@ -1330,6 +1382,42 @@ const F1Simulator = {
       const distAlongPath = car.distance !== undefined ? car.distance : (car.progress % 1) * trackObj.length;
       const cornerFactor = this.getCurvatureSpeedFactor(trackObj, distAlongPath);
       speedFactor *= cornerFactor;
+
+      // Overtake State Machine & Speed Boost:
+      // Passing car moves out over ~1.0s, runs alongside for ~2.5s with higher speed gaining distance gradually,
+      // and then returns to the racing line in front over ~1.0s.
+      if (car.overtakeState) {
+        car.overtakeTimer += dtSeconds;
+        const targetSideOffset = car.overtakeSide || 4.0;
+
+        if (car.overtakeState === 'moving_out') {
+          // Move out to the side over ~1.0 second
+          const progress = Math.min(1.0, car.overtakeTimer / 1.0);
+          car.overtakeLateralOffset = targetSideOffset * progress;
+          if (car.overtakeTimer >= 1.0) {
+            car.overtakeState = 'alongside';
+            car.overtakeTimer = 0;
+          }
+        } else if (car.overtakeState === 'alongside') {
+          // Run alongside for ~2.5 seconds with speed boost (+5.5%) gaining distance gradually
+          car.overtakeLateralOffset = targetSideOffset;
+          speedFactor *= 1.055;
+          if (car.overtakeTimer >= 2.5) {
+            car.overtakeState = 'cutting_in';
+            car.overtakeTimer = 0;
+          }
+        } else if (car.overtakeState === 'cutting_in') {
+          // Return to the racing line in front over ~1.0 second
+          const progress = Math.min(1.0, car.overtakeTimer / 1.0);
+          car.overtakeLateralOffset = targetSideOffset * (1.0 - progress);
+          if (car.overtakeTimer >= 1.0) {
+            car.overtakeState = null;
+            car.overtakeTargetCar = null;
+            car.overtakeTimer = 0;
+            car.overtakeLateralOffset = 0;
+          }
+        }
+      }
 
       // DRS Zone Speed Boost: No DRS on lap 1 or 1 lap after safety car restart
       const drsAllowed = this.currentLap > 1 && !(this.safetyCarRestartLap > 0 && (this.currentLap - this.safetyCarRestartLap) < 1) && !this.safetyCarActive;
@@ -1579,40 +1667,32 @@ const F1Simulator = {
           // Inside DRS: normal pass probability. Outside DRS: OFF_DRS_OVERTAKE_FACTOR = 0.2
           const overtakeProb = inDrs ? baseDrsProb : (baseDrsProb * OFF_DRS_OVERTAKE_FACTOR);
 
-          if (Math.random() < overtakeProb) {
-            // Record that this pair completed an overtake on this lap
+          if (!behind.overtakeState && Math.random() < overtakeProb) {
+            // Record that this pair initiated an overtake on this lap
             this.pairOvertakesThisLap.add(lapKey);
 
-            // Overtake completed: boost behind car slightly ahead without decreasing ahead car's distance
-            // e.g. behind advances past ahead
-            const overtakeLead = 0.001 * pathLength;
-            behind.totalDistance = ahead.totalDistance + overtakeLead;
-            behind.totalDistanceLaps = behind.totalDistance / pathLength;
-            const startOffset = trackObj.startOffset || 0;
-            behind.distance = (((startOffset + behind.totalDistance) % pathLength) + pathLength) % pathLength;
-            behind.progress = behind.distance / pathLength;
+            // PART 2: Initiate visible overtake sequence (no instant order swap)
+            // Passing car pulls out to the side over ~1s, runs alongside for ~2.5s with speed boost,
+            // then returns in front. Timing tower order updates when distance naturally passes ahead car.
+            behind.overtakeState = 'moving_out';
+            behind.overtakeTimer = 0;
+            behind.overtakeTargetCar = ahead;
+            // Choose outside or inside lane relative to ahead car
+            const aheadLat = ahead.lateralOffset || 0;
+            behind.overtakeSide = (aheadLat >= 0) ? -4.5 : 4.5;
 
-            // Overtake lane change: swap target lateral lane offsets between cars
-            // so they smoothly transition lanes over ~1 second
-            const tempTargetLane = ahead.targetLateralOffset;
-            ahead.targetLateralOffset = behind.targetLateralOffset;
-            behind.targetLateralOffset = tempTargetLane;
-
-            // Overtake commentary is low priority, through existing rate limiter,
-            // and never the same pair twice in a row
+            // Commentary feed
             if (this.lastOvertakePairKey !== pairKey) {
               this.lastOvertakePairKey = pairKey;
               const zoneTag = inDrs ? ' [DRS]' : '';
-              this.logCommentary(`⚔️ OVERTAKE${zoneTag}: ${behind.driverName} (${behind.driverCode}) dives down the inside to pass ${ahead.driverName}!`, 'overtake');
+              this.logCommentary(`⚔️ OVERTAKE${zoneTag}: ${behind.driverName} (${behind.driverCode}) pulls alongside ${ahead.driverName}!`, 'overtake');
             }
             break;
-          } else {
+          } else if (!behind.overtakeState) {
             // Stuck in dirty air behind slower car: don't pull distance backwards!
-            // If behind got too close or ahead without overtaking, match ahead distance minus min gap without decreasing
-            const minGap = 0.001 * pathLength;
+            // If behind got too close without overtaking, hold pace to not exceed ahead car
+            const minGap = 0.0008 * pathLength;
             if (behind.totalDistance > ahead.totalDistance - minGap) {
-              // Cap at current distance or ahead minus gap, whichever doesn't decrease behind.totalDistance
-              // Simply hold behind pace/progress from exceeding ahead
               behind.totalDistance = Math.min(behind.totalDistance, ahead.totalDistance - 0.0001);
               behind.totalDistanceLaps = behind.totalDistance / pathLength;
               const startOffset = trackObj.startOffset || 0;
@@ -1625,7 +1705,7 @@ const F1Simulator = {
     }
   },
 
-  getCurvatureSpeedFactor(trackObj, dist) {
+  getCurvatureData(trackObj, dist) {
     const totalLength = trackObj.length;
     const delta = 8;
     const p0 = trackObj.el.getPointAtLength(dist % totalLength);
@@ -1635,13 +1715,21 @@ const F1Simulator = {
     const a1 = Math.atan2(p1.y - p0.y, p1.x - p0.x);
     const a2 = Math.atan2(p2.y - p1.y, p2.x - p1.x);
 
-    let diff = Math.abs(a2 - a1);
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    diff = Math.abs(diff);
+    let rawDiff = a2 - a1;
+    while (rawDiff > Math.PI) rawDiff -= Math.PI * 2;
+    while (rawDiff < -Math.PI) rawDiff += Math.PI * 2;
+
+    const diff = Math.abs(rawDiff);
+    // turnDir: +1 if curving left/inside (+normal), -1 if curving right/inside (-normal)
+    const turnDir = Math.sign(rawDiff);
 
     // Tight corners slow car down, straights allow higher acceleration
-    const factor = Math.max(0.48, 1.25 - diff * 2.0);
-    return factor;
+    const speedFactor = Math.max(0.48, 1.25 - diff * 2.0);
+    return { diff, turnDir, speedFactor };
+  },
+
+  getCurvatureSpeedFactor(trackObj, dist) {
+    return this.getCurvatureData(trackObj, dist).speedFactor;
   },
 
   triggerSafetyCar() {
@@ -2291,6 +2379,8 @@ const F1Simulator = {
     // Finishers first (sorted by distance/laps descending).
     // DNF drivers below all finishers, ordered by laps completed (most first).
     const finishers = this.cars.filter(c => !c.isDNF).sort((a, b) => b.totalDistanceLaps - a.totalDistanceLaps);
+
+
     const dnfCars = this.cars.filter(c => c.isDNF).sort((a, b) => (b.lapsCompleted || 0) - (a.lapsCompleted || 0));
     const finalClassification = [...finishers, ...dnfCars];
 
