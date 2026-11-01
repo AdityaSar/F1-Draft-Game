@@ -953,6 +953,18 @@ body {
   height: 100%;
 }
 
+.sim-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px;
+  background: #14141E;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
 .sim-canvas-container {
   position: relative;
   display: flex;
@@ -965,20 +977,11 @@ body {
   min-height: 0;
 }
 
-.telemetry-overlay {
-  position: absolute;
-  top: 15px;
-  left: 20px;
-  z-index: 10;
-  display: flex;
-  gap: 15px;
-}
-
 .telemetry-lap {
   background: rgba(31, 31, 44, 0.85);
   border: 1px solid var(--f1-red);
-  padding: 6px 14px;
-  font-size: 1.1rem;
+  padding: 4px 12px;
+  font-size: 0.95rem;
   font-weight: 900;
   font-style: italic;
   color: #FFF;
@@ -988,8 +991,8 @@ body {
 .telemetry-weather {
   background: rgba(31, 31, 44, 0.85);
   border: 1px solid var(--border-color);
-  padding: 6px 14px;
-  font-size: 0.9rem;
+  padding: 4px 12px;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-primary);
   transform: skewX(-10deg);
@@ -999,8 +1002,8 @@ body {
   background: rgba(31, 31, 44, 0.9);
   border: 1px solid var(--gold-accent);
   color: var(--gold-accent);
-  padding: 6px 14px;
-  font-size: 0.9rem;
+  padding: 4px 12px;
+  font-size: 0.85rem;
   font-weight: 800;
   transform: skewX(-10deg);
   letter-spacing: 1px;

@@ -207,6 +207,7 @@
             <option value="3" selected>3 Races</option>
             <option value="5">5 Races</option>
             <option value="8">8 Races</option>
+            <option value="10">10 Races</option>
             <option value="all">All Tracks</option>
           </select>
         </div>
@@ -249,12 +250,14 @@
     <div class="sim-main-layout">
       <!-- Left Column: Circuit Telemetry Map + Race Control Log -->
       <div class="sim-left-column">
+        <!-- Dedicated Slim Info Bar above Track Canvas (Nothing overlaps the track) -->
+        <div class="sim-info-bar">
+          <div class="telemetry-lap">LAP <span id="telemetry-current-lap">0</span> / <span id="telemetry-total-laps">20</span></div>
+          <div id="telemetry-weather-indicator" class="telemetry-weather">☀️ DRY</div>
+          <div id="telemetry-championship-indicator" class="telemetry-champ hidden">ROUND 1/3</div>
+        </div>
+
         <div class="sim-canvas-container card-panel">
-          <div class="telemetry-overlay">
-            <div class="telemetry-lap">LAP <span id="telemetry-current-lap">0</span> / <span id="telemetry-total-laps">20</span></div>
-            <div id="telemetry-weather-indicator" class="telemetry-weather">☀️ DRY</div>
-            <div id="telemetry-championship-indicator" class="telemetry-champ hidden">ROUND 1/3</div>
-          </div>
           <canvas id="sim-canvas" width="800" height="520"></canvas>
         </div>
 
