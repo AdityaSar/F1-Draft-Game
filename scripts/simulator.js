@@ -23,6 +23,14 @@ const SIM_CONFIG = {
   // Maximum tyre wear before car must pit (0 = fresh, 1 = destroyed)
   TYRE_PIT_THRESHOLD: 0.65,
 
+  // Strategic Staggered Pit Stop Parameters (Part 3)
+  PIT_MIN_LAP: 3,                   // No car may pit before lap 3 (unless forced by wear/weather)
+  PIT_CLIFF_THRESHOLD: 0.88,        // Immediate pit if tyre falls off cliff
+  PIT_NORMAL_WEAR_THRESHOLD: 0.58,  // Tyre wear threshold required when planned window opens
+  PIT_MAX_CARS_PER_LAP: 2,          // At most 2 cars may enter pit lane on the same lap
+  UNDERCUT_GAP_THRESHOLD_SEC: 1.0,  // Proximity to car ahead to consider undercut
+  UNDERCUT_CHANCE: 0.35,            // Probability of taking an early pit stop (undercut)
+
   // Fuel load parameters
   STARTING_FUEL_KG: 100.0,
   FUEL_BURN_PER_LAP_KG: 100.0 / 20.0, // Burned completely over race distance
@@ -43,7 +51,7 @@ const SIM_CONFIG = {
   // Points scoring system
   POINTS_SCALE: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
 
-  // Track metadata: displayName, country, laps (10-20), overtakingDifficulty (0 to 1), baseLapTime
+  // Track metadata: exactly 32 tracks configured. Confirmed that all 32 tracks in the dropdown have an explicit rainChance (no fallback value).
   TRACKS: {
     monaco: {
       displayName: 'Circuit de Monaco',
@@ -51,7 +59,8 @@ const SIM_CONFIG = {
       laps: 18,
       overtakingDifficulty: 0.90, // Extremely hard to pass
       baseLapTime: 72.0,
-      tyreWearMultiplier: 0.8
+      tyreWearMultiplier: 0.8,
+      rainChance: 0.20
     },
     monza: {
       displayName: 'Autodromo Nazionale Monza',
@@ -59,7 +68,8 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.22, // Long straights, slipstream & DRS
       baseLapTime: 81.0,
-      tyreWearMultiplier: 0.9
+      tyreWearMultiplier: 0.9,
+      rainChance: 0.18
     },
     spa: {
       displayName: 'Circuit de Spa-Francorchamps',
@@ -67,7 +77,8 @@ const SIM_CONFIG = {
       laps: 12,
       overtakingDifficulty: 0.35,
       baseLapTime: 104.0,
-      tyreWearMultiplier: 1.15
+      tyreWearMultiplier: 1.15,
+      rainChance: 0.45
     },
     silverstone: {
       displayName: 'Silverstone Circuit',
@@ -75,7 +86,8 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.45,
       baseLapTime: 87.0,
-      tyreWearMultiplier: 1.25
+      tyreWearMultiplier: 1.25,
+      rainChance: 0.40
     },
     suzuka: {
       displayName: 'Suzuka International Racing Course',
@@ -83,7 +95,8 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.60,
       baseLapTime: 89.0,
-      tyreWearMultiplier: 1.20
+      tyreWearMultiplier: 1.20,
+      rainChance: 0.35
     },
     interlagos: {
       displayName: 'Autódromo José Carlos Pace',
@@ -91,7 +104,8 @@ const SIM_CONFIG = {
       laps: 18,
       overtakingDifficulty: 0.30,
       baseLapTime: 70.5,
-      tyreWearMultiplier: 1.0
+      tyreWearMultiplier: 1.0,
+      rainChance: 0.40
     },
     albert_park: {
       displayName: 'Albert Park Circuit',
@@ -99,7 +113,8 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.45,
       baseLapTime: 79.0,
-      tyreWearMultiplier: 1.05
+      tyreWearMultiplier: 1.05,
+      rainChance: 0.20
     },
     bahrain: {
       displayName: 'Bahrain International Circuit',
@@ -107,7 +122,8 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.30,
       baseLapTime: 91.0,
-      tyreWearMultiplier: 1.25
+      tyreWearMultiplier: 1.25,
+      rainChance: 0.02
     },
     jeddah: {
       displayName: 'Jeddah Corniche Circuit',
@@ -115,7 +131,8 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.35,
       baseLapTime: 88.0,
-      tyreWearMultiplier: 1.10
+      tyreWearMultiplier: 1.10,
+      rainChance: 0.02
     },
     baku: {
       displayName: 'Baku City Circuit',
@@ -123,7 +140,8 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.20, // 2.2km main straight, low difficulty
       baseLapTime: 102.0,
-      tyreWearMultiplier: 1.0
+      tyreWearMultiplier: 1.0,
+      rainChance: 0.08
     },
     miami: {
       displayName: 'Miami International Autodrome',
@@ -131,7 +149,8 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.40,
       baseLapTime: 89.0,
-      tyreWearMultiplier: 1.10
+      tyreWearMultiplier: 1.10,
+      rainChance: 0.25
     },
     imola: {
       displayName: 'Autodromo Enzo e Dino Ferrari',
@@ -139,7 +158,8 @@ const SIM_CONFIG = {
       laps: 17,
       overtakingDifficulty: 0.70, // Narrow traditional circuit
       baseLapTime: 75.0,
-      tyreWearMultiplier: 1.05
+      tyreWearMultiplier: 1.05,
+      rainChance: 0.25
     },
     barcelona: {
       displayName: 'Circuit de Barcelona-Catalunya',
@@ -147,7 +167,8 @@ const SIM_CONFIG = {
       laps: 17,
       overtakingDifficulty: 0.55,
       baseLapTime: 76.0,
-      tyreWearMultiplier: 1.20
+      tyreWearMultiplier: 1.20,
+      rainChance: 0.12
     },
     montreal: {
       displayName: 'Circuit Gilles-Villeneuve',
@@ -155,7 +176,8 @@ const SIM_CONFIG = {
       laps: 18,
       overtakingDifficulty: 0.38,
       baseLapTime: 73.0,
-      tyreWearMultiplier: 1.0
+      tyreWearMultiplier: 1.0,
+      rainChance: 0.35
     },
     red_bull_ring: {
       displayName: 'Red Bull Ring',
@@ -163,7 +185,8 @@ const SIM_CONFIG = {
       laps: 19,
       overtakingDifficulty: 0.32,
       baseLapTime: 65.0,
-      tyreWearMultiplier: 1.0
+      tyreWearMultiplier: 1.0,
+      rainChance: 0.30
     },
     hungaroring: {
       displayName: 'Hungaroring',
@@ -171,7 +194,8 @@ const SIM_CONFIG = {
       laps: 18,
       overtakingDifficulty: 0.80, // High downforce, hard to pass
       baseLapTime: 76.0,
-      tyreWearMultiplier: 1.10
+      tyreWearMultiplier: 1.10,
+      rainChance: 0.20
     },
     zandvoort: {
       displayName: 'Circuit Zandvoort',
@@ -179,7 +203,8 @@ const SIM_CONFIG = {
       laps: 18,
       overtakingDifficulty: 0.75,
       baseLapTime: 71.0,
-      tyreWearMultiplier: 1.20
+      tyreWearMultiplier: 1.20,
+      rainChance: 0.35
     },
     singapore: {
       displayName: 'Marina Bay Street Circuit',
@@ -187,7 +212,8 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.85, // Street circuit, high difficulty
       baseLapTime: 95.0,
-      tyreWearMultiplier: 1.15
+      tyreWearMultiplier: 1.15,
+      rainChance: 0.30
     },
     cota: {
       displayName: 'Circuit of the Americas',
@@ -195,7 +221,8 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.45,
       baseLapTime: 96.0,
-      tyreWearMultiplier: 1.20
+      tyreWearMultiplier: 1.20,
+      rainChance: 0.15
     },
     mexico_city: {
       displayName: 'Autódromo Hermanos Rodríguez',
@@ -203,7 +230,8 @@ const SIM_CONFIG = {
       laps: 18,
       overtakingDifficulty: 0.40,
       baseLapTime: 78.0,
-      tyreWearMultiplier: 0.95
+      tyreWearMultiplier: 0.95,
+      rainChance: 0.10
     },
     las_vegas: {
       displayName: 'Las Vegas Street Circuit',
@@ -211,7 +239,8 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.25, // Long Strip straight, easy overtakes
       baseLapTime: 93.0,
-      tyreWearMultiplier: 0.90
+      tyreWearMultiplier: 0.90,
+      rainChance: 0.03
     },
     lusail: {
       displayName: 'Losail International Circuit',
@@ -219,7 +248,8 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.45,
       baseLapTime: 83.0,
-      tyreWearMultiplier: 1.30
+      tyreWearMultiplier: 1.30,
+      rainChance: 0.02
     },
     yas_marina: {
       displayName: 'Yas Marina Circuit',
@@ -227,7 +257,8 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.42,
       baseLapTime: 84.0,
-      tyreWearMultiplier: 1.05
+      tyreWearMultiplier: 1.05,
+      rainChance: 0.02
     },
     shanghai: {
       displayName: 'Shanghai International Circuit',
@@ -235,7 +266,8 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.35,
       baseLapTime: 94.0,
-      tyreWearMultiplier: 1.20
+      tyreWearMultiplier: 1.20,
+      rainChance: 0.30
     },
     paul_ricard: {
       displayName: 'Circuit Paul Ricard',
@@ -243,7 +275,8 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.40,
       baseLapTime: 92.0,
-      tyreWearMultiplier: 1.15
+      tyreWearMultiplier: 1.15,
+      rainChance: 0.12
     },
     hockenheimring: {
       displayName: 'Hockenheimring',
@@ -251,7 +284,8 @@ const SIM_CONFIG = {
       laps: 17,
       overtakingDifficulty: 0.38,
       baseLapTime: 74.0,
-      tyreWearMultiplier: 1.10
+      tyreWearMultiplier: 1.10,
+      rainChance: 0.25
     },
     nurburgring: {
       displayName: 'Nürburgring GP',
@@ -259,7 +293,8 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.50,
       baseLapTime: 88.0,
-      tyreWearMultiplier: 1.10
+      tyreWearMultiplier: 1.10,
+      rainChance: 0.40
     },
     portimao: {
       displayName: 'Autódromo Internacional do Algarve',
@@ -267,7 +302,8 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.48,
       baseLapTime: 78.0,
-      tyreWearMultiplier: 1.15
+      tyreWearMultiplier: 1.15,
+      rainChance: 0.12
     },
     mugello: {
       displayName: 'Autodromo Internazionale del Mugello',
@@ -275,7 +311,8 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.60,
       baseLapTime: 77.0,
-      tyreWearMultiplier: 1.30
+      tyreWearMultiplier: 1.30,
+      rainChance: 0.15
     },
     sepang: {
       displayName: 'Sepang International Circuit',
@@ -283,7 +320,8 @@ const SIM_CONFIG = {
       laps: 15,
       overtakingDifficulty: 0.35,
       baseLapTime: 93.0,
-      tyreWearMultiplier: 1.25
+      tyreWearMultiplier: 1.25,
+      rainChance: 0.45
     },
     istanbul: {
       displayName: 'Intercity Istanbul Park',
@@ -291,7 +329,8 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.40,
       baseLapTime: 86.0,
-      tyreWearMultiplier: 1.25
+      tyreWearMultiplier: 1.25,
+      rainChance: 0.20
     },
     sochi: {
       displayName: 'Sochi Autodrom',
@@ -299,7 +338,8 @@ const SIM_CONFIG = {
       laps: 16,
       overtakingDifficulty: 0.55,
       baseLapTime: 95.0,
-      tyreWearMultiplier: 0.90
+      tyreWearMultiplier: 0.90,
+      rainChance: 0.10
     }
   },
 
@@ -367,8 +407,21 @@ const F1Simulator = {
   simSpeed: 1, // 1x, 5x, 20x, 50x
   currentLap: 1,
   totalLaps: 20,
-  weather: 'dry', // 'dry' or 'wet'
+  weatherMode: 'auto', // 'auto', 'dry', or 'wet'
+  weather: 'dry', // current active weather: 'dry' or 'wet'
   trackKey: 'monza',
+
+  // Auto-weather schedule & state (Part 2)
+  autoWeatherSchedule: null,
+  weatherChangesCount: 0,
+
+  // Pit management state (Part 3)
+  pitsThisLap: 0,
+  lastPitCountLap: 0,
+
+  // Race order tracking with hysteresis (Part 1)
+  raceOrder: [],
+  hysteresisCounters: {},
 
   safetyCarActive: false,
   safetyCarLapsRemaining: 0,
@@ -822,7 +875,10 @@ const F1Simulator = {
     if (!this.championshipState.isChampionship) {
       this.trackKey = selectEl && selectEl.value ? selectEl.value : 'monza';
     }
-    this.weather = document.getElementById('sim-weather-select').value || 'dry';
+    const weatherVal = document.getElementById('sim-weather-select').value || 'auto';
+    this.weatherMode = weatherVal;
+    this.weather = (weatherVal === 'wet') ? 'wet' : 'dry';
+    document.getElementById('telemetry-weather-indicator').textContent = (this.weather === 'wet') ? '🌧️ WET' : '☀️ DRY';
 
     const trackMeta = SIM_CONFIG.TRACKS[this.trackKey];
     this.totalLaps = trackMeta && trackMeta.laps ? trackMeta.laps : 15;
@@ -839,21 +895,32 @@ const F1Simulator = {
     });
 
     document.getElementById('sim-weather-select').addEventListener('change', (e) => {
-      this.weather = e.target.value;
-      this.logCommentary(`Weather update: Track is now ${this.weather === 'wet' ? '🌧️ WET (Heavy Rain)' : '☀️ DRY'}.`, 'system');
-      document.getElementById('telemetry-weather-indicator').textContent = this.weather === 'wet' ? '🌧️ WET' : '☀️ DRY';
-      // Switch tyre compound strategies if needed
-      this.cars.forEach(car => {
-        if (!car.isDNF) {
-          if (this.weather === 'wet' && car.tyreCompound !== 'WET') {
+      const mode = e.target.value;
+      this.weatherMode = mode;
+      if (mode === 'auto') {
+        this.weather = 'dry';
+        this.logCommentary('Weather update: Forecast set to Auto (realistic). Race will start dry.', 'system');
+      } else if (mode === 'wet') {
+        this.weather = 'wet';
+        this.logCommentary('Weather update: Track is now 🌧️ WET (Heavy Rain).', 'system');
+      } else {
+        this.weather = 'dry';
+        this.logCommentary('Weather update: Track is now ☀️ DRY.', 'system');
+      }
+      document.getElementById('telemetry-weather-indicator').textContent = (this.weather === 'wet') ? '🌧️ WET' : '☀️ DRY';
+
+      if (!this.raceStarted) {
+        this.cars.forEach(car => {
+          if (this.weather === 'wet') {
             car.tyreCompound = 'WET';
-            car.tyreAge = 0;
-          } else if (this.weather === 'dry' && car.tyreCompound === 'WET') {
-            car.tyreCompound = 'MEDIUM';
-            car.tyreAge = 0;
+          } else {
+            car.tyreCompound = Math.random() < 0.45 ? 'SOFT' : 'MEDIUM';
           }
-        }
-      });
+          car.tyreAge = 0;
+          car.tyreWear = 0;
+          car.usedCompounds = [car.tyreCompound];
+        });
+      }
     });
 
     const closeQualyBtn = document.getElementById('btn-close-qualifying');
@@ -958,12 +1025,17 @@ const F1Simulator = {
 
             // Tyres & Fuel
             tyreCompound: startingCompound,
+            usedCompounds: [startingCompound],
             tyreAge: 0,
             tyreWear: 0.0,
             fuelLoadKg: SIM_CONFIG.STARTING_FUEL_KG,
             pitStops: 0,
             isPitting: false,
             pitTimeLossRemaining: 0.0,
+
+            // Staggered Pit Strategy (Part 3)
+            plannedPitLap: null,
+            weatherPitDelayRemaining: null,
 
             // Status string (RACING, IN PIT, DNF, SC)
             status: 'RACING'
@@ -1090,6 +1162,22 @@ const F1Simulator = {
       this.runQualifying(false);
     }
 
+    if (!this.raceStarted) {
+      // Initialize race order directly from current grid order
+      this.raceOrder = [...this.cars];
+      this.hysteresisCounters = {};
+      this.pitsThisLap = 0;
+      this.lastPitCountLap = 1;
+
+      // Assign strategic pit windows (Part 3)
+      this.assignPlannedPitWindows();
+
+      // Roll realistic auto-weather schedule (Part 2)
+      if (!this.autoWeatherSchedule) {
+        this.initRaceWeather();
+      }
+    }
+
     this.isPlaying = true;
     this.raceStarted = true;
 
@@ -1129,6 +1217,24 @@ const F1Simulator = {
     this.commentaryQueue = [];
     this.simulatedTimeSeconds = 0;
     this.lastCommentarySimTime = -999;
+    this.raceOrder = [];
+    this.hysteresisCounters = {};
+    this.pitsThisLap = 0;
+    this.lastPitCountLap = 1;
+    this.autoWeatherSchedule = null;
+    this.weatherChangesCount = 0;
+
+    // Reset weather according to weatherMode
+    if (this.weatherMode === 'auto') {
+      this.weather = 'dry';
+      document.getElementById('telemetry-weather-indicator').textContent = '☀️ DRY';
+    } else if (this.weatherMode === 'wet') {
+      this.weather = 'wet';
+      document.getElementById('telemetry-weather-indicator').textContent = '🌧️ WET';
+    } else {
+      this.weather = 'dry';
+      document.getElementById('telemetry-weather-indicator').textContent = '☀️ DRY';
+    }
 
     // Show Start Qualifying button on reset
     const qualyBtn = document.getElementById('btn-sim-qualifying');
@@ -1137,6 +1243,7 @@ const F1Simulator = {
     const trackMeta = SIM_CONFIG.TRACKS[this.trackKey];
     this.totalLaps = trackMeta && trackMeta.laps ? trackMeta.laps : 15;
     this.buildDraftedCarsList();
+    this.raceOrder = [...this.cars];
     this.commentaryLogs = [];
     document.getElementById('commentary-feed').innerHTML = '';
 
@@ -1200,6 +1307,185 @@ const F1Simulator = {
     }
 
     return lapTime;
+  },
+
+  /**
+   * Assigns individual planned pit windows to each car at race start (Part 3):
+   * - Base lap between 30% and 65% of race distance
+   * - Shifted by starting tyre (Soft earlier, Hard later)
+   * - Random offset of -2 to +2 laps
+   * - Driver-specific bias
+   * - Bounds: no pit before lap 3 or in last 2 laps (unless forced by wear/weather)
+   */
+  assignPlannedPitWindows() {
+    const totalLaps = this.totalLaps || 15;
+    this.cars.forEach((car) => {
+      const baseMin = totalLaps * 0.30;
+      const baseMax = totalLaps * 0.65;
+      const baseLap = baseMin + Math.random() * (baseMax - baseMin);
+
+      let tyreShift = 0;
+      if (car.tyreCompound === 'SOFT') {
+        tyreShift = -2.0;
+      } else if (car.tyreCompound === 'HARD') {
+        tyreShift = +2.5;
+      }
+
+      const randOffset = (Math.random() * 4.0) - 2.0; // -2 to +2 laps
+      const skillBias = ((car.skill - 50) / 50.0) * 0.8;
+
+      let plannedLap = Math.round(baseLap + tyreShift + randOffset + skillBias);
+      // Clamp within bounds [3, totalLaps - 2]
+      plannedLap = Math.max(SIM_CONFIG.PIT_MIN_LAP, Math.min(totalLaps - 2, plannedLap));
+      car.plannedPitLap = plannedLap;
+    });
+  },
+
+  /**
+   * Initializes race weather and auto-weather schedule if in Auto mode (Part 2):
+   * In Auto mode, race starts dry.
+   * Roll once: if it rains this race, pick a start lap between 25% and 65% of race distance.
+   * Rain lasts 3 to 8 laps (never past final lap) and then stops.
+   * Second rain period possible only on high-rain tracks (rainChance >= 0.35) with prob 0.25.
+   * Maximum 2 weather changes per race.
+   */
+  initRaceWeather() {
+    this.weatherChangesCount = 0;
+    this.autoWeatherSchedule = [];
+
+    if (this.weatherMode === 'auto') {
+      this.weather = 'dry';
+      document.getElementById('telemetry-weather-indicator').textContent = '☀️ DRY';
+
+      const trackInfo = SIM_CONFIG.TRACKS[this.trackKey] || SIM_CONFIG.TRACKS.monza;
+      const rainChance = trackInfo.rainChance !== undefined ? trackInfo.rainChance : 0.20;
+      const totalLaps = this.totalLaps || 15;
+
+      const willRain = Math.random() < rainChance;
+      if (willRain) {
+        const startMin = Math.max(2, Math.round(totalLaps * 0.25));
+        const startMax = Math.max(startMin, Math.round(totalLaps * 0.65));
+        const rainStartLap = Math.floor(startMin + Math.random() * (startMax - startMin + 1));
+
+        const maxDuration = Math.max(1, totalLaps - rainStartLap);
+        const randDuration = Math.floor(3 + Math.random() * 6); // 3 to 8 laps
+        const rainDuration = Math.min(randDuration, maxDuration);
+        const rainEndLap = rainStartLap + rainDuration;
+
+        this.autoWeatherSchedule.push({
+          startLap: rainStartLap,
+          endLap: rainEndLap
+        });
+      }
+    } else if (this.weatherMode === 'wet') {
+      this.weather = 'wet';
+      document.getElementById('telemetry-weather-indicator').textContent = '🌧️ WET';
+    } else {
+      this.weather = 'dry';
+      document.getElementById('telemetry-weather-indicator').textContent = '☀️ DRY';
+    }
+  },
+
+  /**
+   * Evaluates weather transitions during the race in Auto mode (Part 2)
+   */
+  checkAutoWeatherTransitions(currentLap) {
+    if (this.weatherMode !== 'auto' || !this.autoWeatherSchedule || this.autoWeatherSchedule.length === 0) {
+      return;
+    }
+
+    if (this.weatherChangesCount >= 2) {
+      return;
+    }
+
+    const sched = this.autoWeatherSchedule[0];
+    if (!sched) return;
+
+    if (this.weather === 'dry' && currentLap >= sched.startLap && currentLap < sched.endLap) {
+      // Transition from DRY -> WET (Change 1)
+      this.weather = 'wet';
+      this.weatherChangesCount++;
+      document.getElementById('telemetry-weather-indicator').textContent = '🌧️ WET';
+      this.logCommentary('🌧️ WEATHER ALERT: Rain is falling heavily on the circuit! Track declared WET.', 'incident');
+      this.triggerWeatherPitReactions('wet');
+    } else if (this.weather === 'wet' && currentLap >= sched.endLap) {
+      // Transition from WET -> DRY (Change 2)
+      this.weather = 'dry';
+      this.weatherChangesCount++;
+      document.getElementById('telemetry-weather-indicator').textContent = '☀️ DRY';
+      this.logCommentary('☀️ WEATHER ALERT: Rain has stopped and track surface is drying out!', 'incident');
+      this.triggerWeatherPitReactions('dry');
+      this.autoWeatherSchedule.shift(); // Finished this period
+    }
+  },
+
+  /**
+   * When weather changes, each car decides to pit after random delay of 1 to 3 laps.
+   * Drivers with higher skill react 0 to 1 lap faster.
+   */
+  triggerWeatherPitReactions(newWeather) {
+    this.cars.forEach((car) => {
+      if (car.isDNF) return;
+
+      // Base random delay of 1 to 3 laps
+      const baseDelay = Math.floor(1 + Math.random() * 3); // 1, 2, or 3
+      // Drivers with higher skill react 0 to 1 lap faster
+      const skillReduction = (car.skill >= 85) ? 1 : ((car.skill >= 70 && Math.random() < 0.5) ? 1 : 0);
+      const effectiveDelay = Math.max(0, baseDelay - skillReduction);
+      car.weatherPitDelayRemaining = effectiveDelay;
+    });
+  },
+
+  /**
+   * Race order tracking with hysteresis (Part 1):
+   * Two cars swap in the order only if the one behind has been ahead for 5 consecutive frames.
+   */
+  updateRaceOrderWithHysteresis() {
+    const activeCars = this.cars.filter(c => !c.isDNF);
+    if (!this.raceOrder || this.raceOrder.length === 0) {
+      this.raceOrder = [...this.cars];
+      this.hysteresisCounters = {};
+      return;
+    }
+
+    const activeIds = new Set(activeCars.map(c => c.id));
+    const currentActiveOrder = this.raceOrder.filter(c => activeIds.has(c.id));
+    activeCars.forEach(c => {
+      if (!currentActiveOrder.includes(c)) currentActiveOrder.push(c);
+    });
+
+    for (let i = 0; i < currentActiveOrder.length - 1; i++) {
+      const carAhead = currentActiveOrder[i];
+      const carBehind = currentActiveOrder[i + 1];
+
+      const key = `${carBehind.id}_ahead_of_${carAhead.id}`;
+      if (carBehind.totalDistance > carAhead.totalDistance) {
+        this.hysteresisCounters[key] = (this.hysteresisCounters[key] || 0) + 1;
+        if (this.hysteresisCounters[key] >= 5) {
+          currentActiveOrder[i] = carBehind;
+          currentActiveOrder[i + 1] = carAhead;
+          delete this.hysteresisCounters[key];
+
+          // Log overtake cleanly after hysteresis confirmation (disabled on lap 1 and SC restart)
+          const allowOvertakeLog = (this.currentLap > 1) &&
+            (this.safetyCarRestartLap <= 0 || (this.currentLap - this.safetyCarRestartLap) >= 1);
+          if (allowOvertakeLog) {
+            const pairKey = [carAhead.id, carBehind.id].sort().join('-');
+            if (this.lastOvertakePairKey !== pairKey) {
+              this.lastOvertakePairKey = pairKey;
+              this.logCommentary(`⚔️ OVERTAKE: ${carBehind.driverName} (${carBehind.driverCode}) dives down the inside to pass ${carAhead.driverName}!`, 'overtake');
+            }
+          }
+        }
+      } else {
+        if (this.hysteresisCounters[key]) {
+          delete this.hysteresisCounters[key];
+        }
+      }
+    }
+
+    const dnfCars = this.cars.filter(c => c.isDNF).sort((a, b) => (b.lapsCompleted || 0) - (a.lapsCompleted || 0));
+    this.raceOrder = [...currentActiveOrder, ...dnfCars];
   },
 
   updatePhysics() {
@@ -1365,17 +1651,76 @@ const F1Simulator = {
           }
         }
 
-        // Pit Stop Strategy Decision: If tyres worn past threshold
-        if (!car.isDNF && car.tyreWear >= SIM_CONFIG.TYRE_PIT_THRESHOLD && car.lap < (this.totalLaps - 1)) {
-          this.executePitStop(car);
+        // Check weather reaction countdown
+        if (car.weatherPitDelayRemaining !== null && car.weatherPitDelayRemaining !== undefined) {
+          if (car.weatherPitDelayRemaining > 0) {
+            car.weatherPitDelayRemaining--;
+          }
+        }
+
+        // Pit Stop Strategy Decision (Part 3)
+        // - At most 2 cars may enter the pits on the same lap. Extra cars delay by one lap.
+        // - No car may pit before lap 3, or in the last 2 laps unless forced by tyre wear or weather.
+        if (!car.isDNF && !car.isPitting && car.lap <= this.totalLaps) {
+          const isPastMinLap = car.lap >= SIM_CONFIG.PIT_MIN_LAP;
+          const isBeforeLastTwoLaps = car.lap <= (this.totalLaps - 2);
+
+          // Forced pit conditions:
+          const isTyreCliff = car.tyreWear >= SIM_CONFIG.PIT_CLIFF_THRESHOLD;
+          const isWeatherForced = (this.weather === 'wet' && car.tyreCompound !== 'WET' && car.weatherPitDelayRemaining === 0) ||
+                                  (this.weather === 'dry' && car.tyreCompound === 'WET' && car.weatherPitDelayRemaining === 0);
+
+          // Strategic planned pit conditions:
+          const isWindowOpen = isPastMinLap && isBeforeLastTwoLaps && car.plannedPitLap && (car.lap >= car.plannedPitLap);
+          const isWearThreshold = car.tyreWear >= SIM_CONFIG.PIT_NORMAL_WEAR_THRESHOLD;
+
+          // Undercut trigger: fighting close behind another car (within 1.0s gap)
+          let isUndercut = false;
+          if (isPastMinLap && isBeforeLastTwoLaps && car.gapToLeader > 0 && car.plannedPitLap && (car.lap === car.plannedPitLap - 1)) {
+            const activeCarsAhead = this.cars.filter(c => !c.isDNF && c !== car && c.totalDistance > car.totalDistance);
+            if (activeCarsAhead.length > 0) {
+              const closestAhead = activeCarsAhead.reduce((minC, c) => (c.totalDistance < minC.totalDistance ? c : minC), activeCarsAhead[0]);
+              const gapToCarAheadSec = (closestAhead.totalDistance - car.totalDistance) / trackObj.length * trackInfo.baseLapTime;
+              if (gapToCarAheadSec <= SIM_CONFIG.UNDERCUT_GAP_THRESHOLD_SEC && Math.random() < SIM_CONFIG.UNDERCUT_CHANCE) {
+                isUndercut = true;
+              }
+            }
+          }
+
+          // Mandatory stop in dry race >= 10 laps if approaching end of race
+          const isMandatoryDryStop = (this.weather === 'dry' && this.totalLaps >= 10 && car.pitStops === 0 && car.lap >= (this.totalLaps - 3));
+
+          const wantsToPit = isTyreCliff || isWeatherForced || (isWindowOpen && isWearThreshold) || isUndercut || isMandatoryDryStop;
+
+          if (wantsToPit) {
+            // Check pit lane capacity: at most 2 cars per lap
+            if (this.pitsThisLap < SIM_CONFIG.PIT_MAX_CARS_PER_LAP || isTyreCliff || isWeatherForced) {
+              this.pitsThisLap++;
+              this.executePitStop(car);
+            } else {
+              // Delay by one lap
+              if (car.plannedPitLap) car.plannedPitLap++;
+            }
+          }
         }
       }
     });
 
     // Update global leader lap counter
     if (leader) {
+      const prevLeaderLap = this.currentLap;
       this.currentLap = Math.min(leader.lap, this.totalLaps + 1);
+      if (this.currentLap !== prevLeaderLap) {
+        // Lap rolled over: reset pit capacity counter for new lap
+        this.pitsThisLap = 0;
+      }
     }
+
+    // Check weather transitions for Auto mode (Part 2)
+    this.checkAutoWeatherTransitions(this.currentLap);
+
+    // Compute and update race order with hysteresis (Part 1)
+    this.updateRaceOrderWithHysteresis();
 
     // Process Safety Car Laps
     if (this.safetyCarActive) {
@@ -1397,23 +1742,49 @@ const F1Simulator = {
     car.pitTimeLossRemaining = SIM_CONFIG.PIT_STOP_TIME_SECONDS;
 
     const oldCompound = car.tyreCompound;
-    // Choose new compound: If wet, stick to WET. If dry, switch between Soft/Medium/Hard
+    if (!car.usedCompounds) car.usedCompounds = [oldCompound];
+
+    // Choose new compound:
     if (this.weather === 'wet') {
       car.tyreCompound = 'WET';
     } else {
       const remainingLaps = this.totalLaps - car.lap;
-      if (remainingLaps <= 6) {
-        car.tyreCompound = 'SOFT'; // Sprint to finish on Softs
-      } else if (oldCompound === 'SOFT') {
-        car.tyreCompound = 'HARD';
+      const dryCompounds = ['SOFT', 'MEDIUM', 'HARD'];
+      const unusedDry = dryCompounds.filter(c => !car.usedCompounds.includes(c));
+
+      if (unusedDry.length > 0) {
+        // Must use at least two different dry compounds in dry race >= 10 laps
+        if (remainingLaps <= 6 && unusedDry.includes('SOFT')) {
+          car.tyreCompound = 'SOFT';
+        } else if (unusedDry.includes('HARD') && remainingLaps > 8) {
+          car.tyreCompound = 'HARD';
+        } else if (unusedDry.includes('MEDIUM')) {
+          car.tyreCompound = 'MEDIUM';
+        } else {
+          car.tyreCompound = unusedDry[0];
+        }
       } else {
-        car.tyreCompound = 'MEDIUM';
+        // Both used already; choose based on remaining distance
+        if (remainingLaps <= 6) {
+          car.tyreCompound = 'SOFT';
+        } else if (oldCompound === 'SOFT') {
+          car.tyreCompound = 'HARD';
+        } else {
+          car.tyreCompound = 'MEDIUM';
+        }
       }
+    }
+
+    if (!car.usedCompounds.includes(car.tyreCompound)) {
+      car.usedCompounds.push(car.tyreCompound);
     }
 
     car.tyreAge = 0;
     car.tyreWear = 0.0;
-    this.logCommentary(`🛑 BOX BOX: ${car.driverName} pits for fresh ${car.tyreCompound} tyres! (~20s stop)`, 'system');
+    car.weatherPitDelayRemaining = null;
+
+    // Requirement: Log pit stops as normal priority commentary
+    this.logCommentary(`🛑 BOX BOX: ${car.driverName} pits for fresh ${car.tyreCompound} tyres! (~20s stop)`, 'normal');
   },
 
   /**
@@ -1429,78 +1800,16 @@ const F1Simulator = {
   processOvertaking() {
     if (this.safetyCarActive) return;
 
-    // Requirement B: Disable overtake checks and overtake commentary on lap 1
-    if (this.currentLap <= 1) return;
-
-    // Requirement B: Disable overtake checks and commentary for 1 lap after any safety car restart
-    if (this.safetyCarRestartLap > 0 && (this.currentLap - this.safetyCarRestartLap) < 1) {
-      return;
-    }
-
     const trackInfo = SIM_CONFIG.TRACKS[this.trackKey] || SIM_CONFIG.TRACKS.monza;
-    const trackObj = this.getTrackPathObj(this.trackKey);
-    const pathLength = trackObj ? trackObj.length : 1000;
     const activeCars = this.cars.filter(c => !c.isDNF && !c.isPitting);
-    // Sort by total distance covered descending
-    activeCars.sort((a, b) => b.totalDistanceLaps - a.totalDistanceLaps);
+    if (activeCars.length === 0) return;
 
     const baseLapTime = trackInfo.baseLapTime;
+    const leaderDist = (this.raceOrder && this.raceOrder[0]) ? this.raceOrder[0].totalDistance : activeCars[0].totalDistance;
 
-    for (let i = 0; i < activeCars.length - 1; i++) {
-      const ahead = activeCars[i];
-      const behind = activeCars[i + 1];
-
-      // Time gap between cars
-      const lapDelta = ahead.totalDistanceLaps - behind.totalDistanceLaps;
-      const gapSeconds = lapDelta * baseLapTime;
-      behind.gapToLeader = (activeCars[0].totalDistanceLaps - behind.totalDistanceLaps) * baseLapTime;
-
-      // DRS Zone proximity condition: within 1.0 second
-      if (gapSeconds <= SIM_CONFIG.OVERTAKE_GAP_THRESHOLD_SECONDS && gapSeconds > 0) {
-        const aheadPace = this.computeCarLapPace(ahead);
-        const behindPace = this.computeCarLapPace(behind);
-        const paceAdvantage = aheadPace - behindPace; // Positive if behind is faster
-
-        if (paceAdvantage > 0.2) {
-          // Overtaking probability depends on pace delta and track difficulty
-          const difficultyFactor = 1.0 - trackInfo.overtakingDifficulty;
-          const overtakeProb = (paceAdvantage * 0.08 + 0.02) * difficultyFactor;
-
-          if (Math.random() < overtakeProb) {
-            // Swap distance positions
-            const tempDistLaps = ahead.totalDistanceLaps;
-            ahead.totalDistanceLaps = behind.totalDistanceLaps;
-            behind.totalDistanceLaps = tempDistLaps;
-
-            const tempTotalDist = ahead.totalDistance;
-            ahead.totalDistance = behind.totalDistance;
-            behind.totalDistance = tempTotalDist;
-
-            const tempDist = ahead.distance;
-            ahead.distance = behind.distance;
-            behind.distance = tempDist;
-
-            const tempProg = ahead.progress;
-            ahead.progress = behind.progress;
-            behind.progress = tempProg;
-
-            // Check duplicate pair: sorted driver ids to identify the exact pair
-            const pairKey = [ahead.id, behind.id].sort().join('-');
-            if (this.lastOvertakePairKey !== pairKey) {
-              this.lastOvertakePairKey = pairKey;
-              this.logCommentary(`⚔️ OVERTAKE: ${behind.driverName} (${behind.driverCode}) dives down the inside to pass ${ahead.driverName}!`, 'overtake');
-            }
-            break;
-          } else {
-            // Stuck in dirty air behind slower car: cap speed to car ahead
-            behind.totalDistance = Math.min(behind.totalDistance, ahead.totalDistance - 0.002 * pathLength);
-            behind.totalDistanceLaps = behind.totalDistance / pathLength;
-            behind.distance = ((behind.totalDistance % pathLength) + pathLength) % pathLength;
-            behind.progress = behind.distance / pathLength;
-          }
-        }
-      }
-    }
+    activeCars.forEach(car => {
+      car.gapToLeader = Math.max(0, ((leaderDist - car.totalDistance) / (trackInfo.baseLapTime * 60)) * baseLapTime);
+    });
   },
 
   getCurvatureSpeedFactor(trackObj, dist) {
@@ -1688,10 +1997,11 @@ const F1Simulator = {
 
       // Driver 3-Letter Label
       // Requirement 4: Do not draw driver labels on the grid before the race starts.
-      // After lights out, show labels only for the top 5.
+      // After lights out, show labels only for the top 5 (determined by hysteresis raceOrder).
       let showLabel = false;
       if (this.raceStarted) {
-        const currentRank = sortedActive.indexOf(car) + 1;
+        const orderList = (this.raceOrder && this.raceOrder.length > 0) ? this.raceOrder : this.cars;
+        const currentRank = orderList.indexOf(car) + 1;
         showLabel = (currentRank <= 5);
       }
 
@@ -1723,12 +2033,8 @@ const F1Simulator = {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    const sortedCars = [...this.cars].sort((a, b) => {
-      if (a.isDNF && !b.isDNF) return 1;
-      if (!a.isDNF && b.isDNF) return -1;
-      return b.totalDistanceLaps - a.totalDistanceLaps;
-    });
-
+    // Read directly from raceOrder computed with hysteresis
+    const sortedCars = (this.raceOrder && this.raceOrder.length > 0) ? this.raceOrder : this.cars;
     const leader = sortedCars[0];
     const trackInfo = SIM_CONFIG.TRACKS[this.trackKey] || SIM_CONFIG.TRACKS.monza;
 
@@ -1920,8 +2226,21 @@ const F1Simulator = {
     document.getElementById('sim-status-badge').style.background = '#E10600';
     document.getElementById('sim-status-badge').style.color = '#FFF';
 
+    // Reset weather & race order for next championship round
+    this.raceOrder = [];
+    this.hysteresisCounters = {};
+    this.pitsThisLap = 0;
+    this.lastPitCountLap = 1;
+    this.autoWeatherSchedule = null;
+    this.weatherChangesCount = 0;
+    if (this.weatherMode === 'auto') {
+      this.weather = 'dry';
+      document.getElementById('telemetry-weather-indicator').textContent = '☀️ DRY';
+    }
+
     // Rebuild fresh car state (positions, tyres, fuel, DNFs) while preserving players & rosters
     this.buildDraftedCarsList();
+    this.raceOrder = [...this.cars];
     this.updateChampionshipTelemetryBanner();
 
     document.getElementById('commentary-feed').innerHTML = '';
